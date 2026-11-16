@@ -9,8 +9,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 2. Bump `version` in `fxmanifest.lua` to the same number.
 3. Write 3–6 short lines for server owners in `version.json` (same number).
 4. Upload the build to keymaster.
-5. **Last:** copy `version.json` over `gsc_kasippu_system.json` in
+5. **Last:** copy `version.json` over **both** `cv_kasippu_system.json` and `gsc_kasippu_system.json` in
    [0nexo0/CronicalVerse-Versions](https://github.com/0nexo0/CronicalVerse-Versions), commit, push.
+   (`cv_kasippu_system.json` is what 1.6.0+ reads; `gsc_kasippu_system.json` is what 1.5.x servers still read.)
    Pushing tells every server to update, so only do it once the build is on keymaster.
 
 The server console shows the result on start (`cv_core/server/version.lua`):
@@ -18,7 +19,7 @@ up to date (green), outdated with the changelog lines from that JSON (red), or a
 
 ## [Unreleased]
 
-## [1.6.0] - not released yet
+## [1.6.0] - 2026-11-16
 
 ### Added
 - **Kasippu radial menu (F6)** — every action available where you stand, in one wheel.
@@ -29,8 +30,8 @@ up to date (green), outdated with the changelog lines from that JSON (red), or a
 
 ### Changed
 - **Resource folder is now `cv_kasippu_system`** (was `gsc_kasippu_system`). Event names are unchanged.
-  - `fxmanifest.lua`: `gsc_version_id` → `cv_version_id`.
-  - The version file stays `gsc_kasippu_system.json`, so 1.5.x and 1.6.0 servers read the same file.
+  - `fxmanifest.lua`: `gsc_version_id 'gsc_kasippu_system'` → `cv_version_id 'cv_kasippu_system'`.
+  - 1.6.0+ reads `cv_kasippu_system.json`. `gsc_kasippu_system.json` stays for 1.5.x servers.
 - **Turning the version check off:** `set cv_versioncheck false` in `server.cfg` (was `gsc_versioncheck`).
   A server that only has `set gsc_versioncheck false` will see the check again; add the `cv_` line too.
   `Config.VersionCheck = false` in `config/main.lua` still works.
