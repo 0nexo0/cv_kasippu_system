@@ -1,0 +1,388 @@
+/*
+ * Radial menu styles for gsc_kasippu_system.
+ * Taken from EZ-Scripts/ez_radialmenu, html/css/main.css (https://github.com/EZ-Scripts/ez_radialmenu),
+ * GNU GPL v3.0 - see LICENSE-radialmenu.txt in this folder.
+ * MODIFIED: only the menu rules are kept, every selector is scoped to #gsc-radial so nothing else in this
+ * UI is touched, the Google Fonts import is dropped (the UI's own PT Serif is used), and the look is redone
+ * as a dark gold-rimmed wheel with a bezel, key numbers and a centre caption (built in nui/script.js), plus
+ * the timed-action bar (#gsc-radial-hold).
+ */
+
+#gsc-radial {
+    --rr-ink: rgba(16, 13, 10, 0.84);       /* a wedge */
+    --rr-ink-hi: rgba(52, 41, 28, 0.94);    /* the picked wedge */
+    --rr-edge: rgba(243, 238, 230, 0.14);   /* hairline between wedges */
+    --rr-gold: #d4a24a;
+    --rr-ivory: #f3eee6;
+    --rr-dim: #8c857a;
+    --rr-text: #ddd5c6;                     /* wedge names and icons: light enough to read at a glance */
+    --rr-font: var(--read, "PT Serif", Georgia, serif);
+
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: none;
+    /* the world falls dark toward the edges, the wheel stays lit */
+    background: radial-gradient(ellipse at 50% 46%, rgba(8, 6, 4, 0.2) 0%, rgba(8, 6, 4, 0.6) 46%, rgba(3, 2, 1, 0.9) 100%);
+}
+
+#gsc-radial.open {
+    display: block;
+    pointer-events: auto; /* [gsc] body is pointer-events: none (style.css): without this every click went through to the game */
+    animation: gsc-radial-fade 0.18s ease-out both;
+}
+
+@keyframes gsc-radial-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+#gsc-radial div.menuHolder {
+    user-select: none;
+    -moz-user-select: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    margin-left: auto;
+    margin-right: auto;
+    top: 30%;
+}
+
+#gsc-radial svg.icons {
+    display: none;
+}
+
+/* ---o[ A ring: opens with a turn, a ring behind it steps back ]o--- */
+#gsc-radial svg.menu {
+    position: absolute;
+    overflow: visible;
+    /* visibility must stay in the list: the menu waits for its transitionend before it drops a ring (radialmenu.js:660) */
+    transition: transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s ease-out, visibility 0.2s;
+}
+
+#gsc-radial svg.menu.inner {
+    transform: scale(0.86) rotate(-14deg);
+    opacity: 0;
+    visibility: hidden;
+}
+
+#gsc-radial svg.menu.outer {
+    transform: scale(1.1);
+    opacity: 0;
+    visibility: hidden;
+}
+
+/* ---o[ The wedges ]o--- */
+#gsc-radial svg.menu > g > path {
+    fill: var(--rr-ink);
+    stroke: var(--rr-edge);
+    stroke-width: 0.25;
+    transition: fill 0.14s ease-out, stroke 0.14s ease-out;
+}
+
+/* the empty slot a ring of 1 - 2 wedges still gets (the menu draws at least 3): barely there */
+#gsc-radial svg.menu > g.dummy > path {
+    fill: rgba(16, 13, 10, 0.18);
+    stroke: rgba(243, 238, 230, 0.05);
+}
+
+#gsc-radial svg.menu > g.sector {
+    cursor: pointer;
+    animation: gsc-wedge-in 0.3s ease-out both;
+    animation-delay: calc(var(--i, 0) * 28ms);
+}
+
+@keyframes gsc-wedge-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* the wedge names: big enough to read, light on the dark wedge, with a dark halo against any background */
+#gsc-radial svg.menu > g.sector > text {
+    font-family: var(--rr-font);
+    font-size: 3.3px;
+    font-weight: bold;
+    letter-spacing: 0.08px;
+    text-transform: uppercase;
+    fill: var(--rr-text);
+    paint-order: stroke fill;
+    stroke: rgba(6, 5, 4, 0.9);
+    stroke-width: 0.55px;
+    stroke-linejoin: round;
+    transition: fill 0.14s ease-out;
+}
+
+#gsc-radial svg.menu > g.sector > svg {
+    fill: var(--rr-text);
+    opacity: 0.92;
+    transition: fill 0.14s ease-out, opacity 0.14s ease-out;
+}
+
+/* the picked wedge: warmer, gold-rimmed, lit */
+#gsc-radial svg.menu > g.sector.selected > path {
+    fill: var(--rr-ink-hi);
+    stroke: var(--rr-gold);
+    stroke-width: 0.5;
+    filter: drop-shadow(0 0 1.4px rgba(212, 162, 74, 0.55));
+}
+
+#gsc-radial svg.menu > g.sector.selected > text {
+    fill: #fffaf0;
+}
+
+#gsc-radial svg.menu > g.sector.selected > svg {
+    fill: var(--rr-ivory);
+    opacity: 1;
+}
+
+/* the moment it is picked */
+#gsc-radial svg.menu > g.sector.fired > path {
+    fill: rgba(212, 162, 74, 0.55);
+}
+
+/* ---o[ The centre: a dark plate, the caption is HTML over it (it closes / goes back on a click) ]o--- */
+#gsc-radial svg.menu > g.center > circle {
+    cursor: pointer;
+    fill: rgba(10, 8, 6, 0.92);
+    stroke: rgba(212, 162, 74, 0.45);
+    stroke-width: 0.4;
+    transition: stroke 0.14s ease-out;
+}
+
+#gsc-radial svg.menu > g.center:hover > circle {
+    stroke: var(--rr-ivory);
+}
+
+#gsc-radial svg.menu > g.center > svg,
+#gsc-radial svg.menu > g.center > text {
+    display: none; /* the caption says it instead */
+}
+
+/* ---o[ Bezel, pointer and key numbers (added by nui/script.js; never in the way of the mouse) ]o--- */
+#gsc-radial .gsc-bezel,
+#gsc-radial .gsc-badges {
+    pointer-events: none;
+}
+
+#gsc-radial .gsc-bezel .ring {
+    fill: none;
+    stroke: rgba(243, 238, 230, 0.24);
+    stroke-width: 0.3;
+}
+
+#gsc-radial .gsc-bezel .ring.faint {
+    stroke: rgba(243, 238, 230, 0.1);
+}
+
+#gsc-radial .gsc-bezel .ticks {
+    fill: none;
+    stroke: rgba(243, 238, 230, 0.2);
+    stroke-width: 0.25;
+}
+
+#gsc-radial .gsc-pointer {
+    fill: none;
+    stroke: var(--rr-gold);
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    filter: drop-shadow(0 0 1.2px rgba(212, 162, 74, 0.8));
+}
+
+#gsc-radial .gsc-badge {
+    font-family: var(--rr-font);
+    font-size: 3.2px;
+    font-weight: bold;
+    fill: #bdb5a8;
+    paint-order: stroke fill;
+    stroke: rgba(6, 5, 4, 0.85);
+    stroke-width: 0.5px;
+    transition: fill 0.14s ease-out;
+}
+
+#gsc-radial .gsc-badge.on {
+    fill: var(--rr-gold);
+}
+
+/* ---o[ The caption in the centre: where you are, what is picked, the keys ]o--- */
+#gsc-radial .gsc-caption {
+    --rs: 1; /* menu size / 375, set by nui/script.js */
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: calc(112px * var(--rs));
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    text-align: center;
+    font-family: var(--rr-font);
+    text-transform: uppercase;
+    z-index: 2;
+}
+
+#gsc-radial .gsc-caption .place {
+    color: var(--rr-gold);
+    font-size: calc(9.5px * var(--rs));
+    font-weight: bold;
+    letter-spacing: calc(1.6px * var(--rs));
+    text-shadow: 0 1px 2px #000;
+}
+
+#gsc-radial .gsc-caption .title {
+    margin-top: calc(3px * var(--rs));
+    color: #fffaf0;
+    font-size: calc(14px * var(--rs));
+    font-weight: bold;
+    line-height: 1.12;
+    letter-spacing: 0.3px;
+    text-shadow: 0 1px 3px #000;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+#gsc-radial .gsc-caption .title.swap {
+    animation: gsc-caption-swap 0.16s ease-out;
+}
+
+@keyframes gsc-caption-swap {
+    from { opacity: 0; transform: translateY(3px); }
+    to { opacity: 1; transform: none; }
+}
+
+#gsc-radial .gsc-caption .rule {
+    width: 42%;
+    height: 1px;
+    margin: calc(5px * var(--rs)) auto calc(4px * var(--rs));
+    background: linear-gradient(90deg, transparent, rgba(212, 162, 74, 0.8), transparent);
+}
+
+#gsc-radial .gsc-caption .hint {
+    color: #bdb5a8;
+    font-size: calc(7px * var(--rs));
+    white-space: nowrap;
+    letter-spacing: calc(0.8px * var(--rs));
+    text-transform: none;
+}
+
+/* ---o[ Timed action: a slim brush strip while a radial pick runs its hold (seize, pour, pick up) ]o--- */
+#gsc-radial-hold {
+    position: fixed;
+    left: 50%;
+    bottom: 18%;
+    width: 300px;
+    transform: translateX(-50%);
+    z-index: 200;
+    display: none;
+    font-family: var(--read, "PT Serif", serif);
+    color: #f3eee6;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    font-size: 13px;
+    font-weight: bold;
+    text-shadow: 0 1px 3px #000;
+}
+
+#gsc-radial-hold.show {
+    display: block;
+    animation: gsc-radial-fade 0.15s ease-out both;
+}
+
+#gsc-radial-hold .bar {
+    margin-top: 7px;
+    height: 9px;
+    padding: 2px 3px;
+    background: rgba(10, 8, 6, 0.88);
+    /* ragged ends, like a stroke of the brush */
+    clip-path: polygon(1% 18%, 4% 0, 30% 10%, 62% 0, 96% 8%, 100% 46%, 98% 100%, 66% 88%, 34% 100%, 3% 90%, 0 56%);
+}
+
+#gsc-radial-hold .fill {
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, #8a5f1f, #d4a24a 70%, #f0d08a);
+    box-shadow: 0 0 6px rgba(212, 162, 74, 0.6);
+}
+
+/* ---o[ The "F2  Kasippu Menu" tag: bottom right, only at a still / crate / buyer (sent by GSC.Radial) ]o--- */
+#gsc-radial-hint {
+    position: fixed;
+    right: 2.2vw;
+    bottom: 13vh;
+    z-index: 150;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 18px 7px 9px;
+    background: linear-gradient(90deg, rgba(10, 8, 6, 0.9), rgba(10, 8, 6, 0.72) 70%, rgba(10, 8, 6, 0));
+    /* a dragged brush: ragged on the left, fading out on the right */
+    clip-path: polygon(2% 10%, 6% 0, 100% 0, 100% 100%, 5% 100%, 0 78%, 3% 52%);
+    font-family: var(--read, "PT Serif", Georgia, serif);
+    text-transform: uppercase;
+    opacity: 0;
+    transform: translateX(12px);
+    transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+    pointer-events: none;
+}
+
+#gsc-radial-hint.show {
+    opacity: 1;
+    transform: none;
+}
+
+#gsc-radial-hint .key {
+    min-width: 22px;
+    padding: 3px 6px;
+    border: 1px solid rgba(243, 238, 230, 0.85);
+    border-radius: 3px;
+    color: #f3eee6;
+    font-size: 13px;
+    font-weight: bold;
+    line-height: 1;
+    text-align: center;
+    box-shadow: 0 0 6px rgba(212, 162, 74, 0.35), inset 0 -2px 0 rgba(243, 238, 230, 0.15);
+}
+
+#gsc-radial-hint .label {
+    color: #d4a24a;
+    font-size: 13px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-shadow: 0 1px 3px #000;
+}
+
+/* ---o[ [gsc] At a still / crate: right on top of its gauge (left), lit gold so it is seen (placed by radialHintPlace) ]o--- */
+#gsc-radial-hint.on-gauge {
+    right: auto;
+    bottom: auto;
+    padding: 9px 26px 9px 10px;
+    background: linear-gradient(90deg, rgba(10, 8, 6, 0.94), rgba(10, 8, 6, 0.86) 72%, rgba(10, 8, 6, 0));
+    border-left: 3px solid #d4a24a;
+    /* ragged on the right now, fading into the scene */
+    clip-path: polygon(0 0, 92% 0, 97% 30%, 100% 100%, 0 100%);
+    transform: translateY(6px);
+}
+
+#gsc-radial-hint.on-gauge.show {
+    transform: none;
+}
+
+#gsc-radial-hint.on-gauge .key {
+    background: #d4a24a;
+    border-color: #f0d08a;
+    color: #1a120a;
+}
+
+#gsc-radial-hint.on-gauge .label {
+    color: #f0d08a;
+}
+
+/* a slow glow on the key, only while the tag is up (hidden, nothing runs) */
+#gsc-radial-hint.on-gauge.show .key {
+    animation: gsc-hint-glow 1.6s ease-in-out infinite;
+}
+
+@keyframes gsc-hint-glow {
+    0%, 100% { box-shadow: 0 0 4px rgba(212, 162, 74, 0.45), inset 0 -2px 0 rgba(26, 18, 10, 0.25); }
+    50%      { box-shadow: 0 0 12px rgba(240, 208, 138, 0.95), inset 0 -2px 0 rgba(26, 18, 10, 0.25); }
+}
