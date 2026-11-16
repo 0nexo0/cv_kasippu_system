@@ -105,5 +105,9 @@ files {
     'nui/**',
 }
 
-version '1.5.0'
-gsc_version_id 'gsc_kasippu_system' 
+---oo[ Version check - cv_core/server/version.lua, see CHANGELOG.md ]oo---
+-- version:       bump on every release (keep CHANGELOG.md and version.json in step)
+-- cv_version_id: the file this script reads in 0nexo0/CronicalVerse-Versions. It stays
+--                'gsc_kasippu_system' so servers on 1.5.x and 1.6.0+ read the same file.
+version '1.6.0'
+cv_version_id 'gsc_kasippu_system'
