@@ -3,8 +3,7 @@ Config.Items = {
     ---o[ Tools and containers ]o---
     ClimbRope    = "climb_rope",           -- needed to climb a coconut tree
     EmptyPot     = "empty_pot",            -- catches coconut water at the top of a tree
-    FilledPot    = "filled_pot",           -- a pot of coconut water; remembers how many ml
-    CoconutWater = "coconut_water",        -- coconut water poured out of a pot; remembers ml
+    FilledPot    = "filled_pot",           -- a pot of coconut water (ml in metadata); the still drinks it, drained = empty pot
     BarrelKit    = "kassippu_barrel_kit",  -- sets down a still
     RepairKit    = "barrel_repair_kit",    -- repairs a worn still; several uses (Config.BarrelCondition.RepairKitUses)
     AgingCrate   = "kassippu_aging_crate", -- sets down an aging crate

@@ -68,9 +68,9 @@ Config.CoconutBucketConf = {
     AttachBone     = 0,
 
     ---o[ Items ]o---
-    CoconutWaterItem = Config.Items.CoconutWater,
     RequiredPotItem  = Config.Items.EmptyPot,  -- needed to collect
     FilledPotItem    = Config.Items.FilledPot, -- what the empty pot becomes (carries the ml)
+    PotCapacityMl    = 1000,                   -- most ml one pot holds; part-filled pots are topped up first, then empty ones
 
     ---o[ Filling ]o---
     FillIntervalMinutes    = 1,   -- minutes between fills

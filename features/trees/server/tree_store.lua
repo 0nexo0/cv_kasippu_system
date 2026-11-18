@@ -218,6 +218,67 @@ AddEventHandler('playerDropped', function()
     Climbs[source] = nil
 end)
 
+---oo[ Collect Coconut Water Into The Player's Pots ]oo---
+local Collecting = {}     -- [src] = true while their collect runs
+local CollectingTree = {} -- [uid] = true while somebody is collecting from it
+
+---o[ The older of two picked stamps: topped-up water is as old as its oldest part ]o---
+local function OlderStamp(a, b)
+    a, b = tonumber(a), tonumber(b)
+    if a and b then return math.min(a, b) end
+    return a or b
+end
+
+---o[ Pour up to `available` ml into the player's pots: part-filled pots first, then empty ones ]o---
+local function FillPots(src, available, picked)
+    local conf = Config.CoconutBucketConf
+    local capacity = conf.PotCapacityMl or (conf.MaxFillPercent * conf.MlPerPercent)
+    local taken, topped, filled, heavy = 0, 0, 0, false
+
+    ---o[ 1. Top up part-filled pots, fullest first ]o---
+    local partial = {}
+    for _, item in ipairs(exports.vorp_inventory:getUserInventoryItems(src) or {}) do
+        local ml = item.name == conf.FilledPotItem and item.metadata and tonumber(item.metadata.ml) or nil
+        if ml and ml < capacity then
+            partial[#partial + 1] = { id = item.id, count = item.count or 1, ml = math.max(0, ml), metadata = item.metadata }
+        end
+    end
+    table.sort(partial, function(a, b) return a.ml > b.ml end)
+
+    for _, pot in ipairs(partial) do
+        for _ = 1, pot.count do
+            if available - taken <= 0 then break end
+
+            local add = math.min(capacity - pot.ml, available - taken)
+            local metadata = GSC.Mash.PotMetadata(pot.ml + add, OlderStamp(pot.metadata.picked, picked), pot.metadata)
+            if exports.vorp_inventory:setItemMetadata(src, pot.id, metadata, 1) == false then break end
+
+            taken = taken + add
+            topped = topped + 1
+        end
+    end
+
+    ---o[ 2. Fill empty pots with what is left ]o---
+    local empties = exports.vorp_inventory:getItemCount(src, nil, conf.RequiredPotItem) or 0
+    for _ = 1, empties do
+        if available - taken <= 0 then break end
+
+        if not exports.vorp_inventory:canCarryItem(src, conf.FilledPotItem, 1) then
+            heavy = true
+            break
+        end
+        if not exports.vorp_inventory:subItem(src, conf.RequiredPotItem, 1) then break end -- no empty pot taken: no filled one
+
+        local ml = math.min(capacity, available - taken)
+        exports.vorp_inventory:addItem(src, conf.FilledPotItem, 1, GSC.Mash.PotMetadata(ml, picked))
+
+        taken = taken + ml
+        filled = filled + 1
+    end
+
+    return taken, topped, filled, heavy
+end
+
 RegisterServerEvent('gsc_kassippu:server:collectCoconutWater')
 AddEventHandler('gsc_kassippu:server:collectCoconutWater', function(uid)
     local _source = source
@@ -240,101 +301,69 @@ AddEventHandler('gsc_kassippu:server:collectCoconutWater', function(uid)
         return
     end
 
-    local conf = Config.CoconutBucketConf
-    local percent = TreeStore.GetBucketFillPercent(uid)
-    local totalMl = math.floor(percent * conf.MlPerPercent) -- 1% = 10ml
+    ---o[ One collect at a time, per player and per tree ]o---
+    if Collecting[_source] or CollectingTree[uid] then return end
+    Collecting[_source], CollectingTree[uid] = true, true
 
-    ---o[ Still On Its Regrow Cooldown From The Last Collect ]o---
-    local cooldownLeft = GetBucketCooldownRemaining(uid)
-    if cooldownLeft > 0 then
-        TriggerClientEvent('gsc_kassippu:client:bucketSync', _source, uid, percent, cooldownLeft)
-        GSC.Notify.Send(_source, Config.Text.TreeReGrowingNotify, 3000)
-        return
-    end
+    local ok, err = pcall(function()
+        local conf = Config.CoconutBucketConf
+        local percent = TreeStore.GetBucketFillPercent(uid)
+        local totalMl = math.floor(percent * conf.MlPerPercent) -- 1% = 10ml
 
-    if totalMl <= 0 then
-        GSC.Notify.Send(_source, Config.Text.CoconutBucketEmptyNotify, 3000)
-        return
-    end
+        ---o[ Still On Its Regrow Cooldown From The Last Collect ]o---
+        local cooldownLeft = GetBucketCooldownRemaining(uid)
+        if cooldownLeft > 0 then
+            TriggerClientEvent('gsc_kassippu:client:bucketSync', _source, uid, percent, cooldownLeft)
+            GSC.Notify.Send(_source, Config.Text.TreeReGrowingNotify, 3000)
+            return
+        end
 
-    if exports.vorp_inventory:getItemCount(_source, nil, conf.RequiredPotItem) < 1 then
-        GSC.Notify.Send(_source, Config.Text.CoconutPotRequiredNotify, 3000)
-        return
-    end
+        if totalMl <= 0 then
+            GSC.Notify.Send(_source, Config.Text.CoconutBucketEmptyNotify, 3000)
+            return
+        end
 
-    local canCarry = exports.vorp_inventory:canCarryItem(_source, conf.FilledPotItem, 1)
-    if not canCarry then
-        GSC.Notify.Send(_source, Config.Text.TreeItemsSearchPocketHeavyNotify, 3000)
-        return
-    end
+        local picked = Config.Freshness.Enabled and GSC.Mash.Stamp() or nil
+        local taken, topped, filled, heavy = FillPots(_source, totalMl, picked)
 
-    local potMetadata = {
-        label = string.format("Coconut Water (%dml)", totalMl),
-        description = string.format("A pot filled with %dml of fresh coconut water.", totalMl),
-        ml = totalMl,
-        picked = Config.Freshness.Enabled and GSC.Mash.Stamp() or nil,
-    }
+        if taken <= 0 then
+            if heavy then
+                GSC.Notify.Send(_source, Config.Text.TreeItemsSearchPocketHeavyNotify, 3000)
+            else
+                GSC.Notify.Send(_source, Config.Text.CoconutPotRequiredNotify, 3000)
+            end
+            return
+        end
 
-    if not exports.vorp_inventory:subItem(_source, conf.RequiredPotItem, 1) then -- no empty pot taken: no filled one
-        return GSC.Notify.Send(_source, Config.Text.CoconutPotRequiredNotify, 3000)
-    end
-    exports.vorp_inventory:addItem(_source, conf.FilledPotItem, 1, potMetadata)
+        ---o[ Take it out of the tree's pot ]o---
+        local leftMl = totalMl - taken
+        local cooldown = 0
 
-    ---o[ Reset This Tree's Bucket + Start Its Regrow Cooldown ]o---
-    local cooldown = math.max(0, conf.RegrowCooldownSeconds or 0)
+        if leftMl <= 0 then
+            ---o[ Drained: reset it and start its regrow cooldown ]o---
+            cooldown = math.max(0, conf.RegrowCooldownSeconds or 0)
+            TreeBucketFill[uid] = 0.0
+            TreeBucketLastUpdate[uid] = os.time() + cooldown
+        else
+            ---o[ Some left: it stays in the tree and keeps filling from now ]o---
+            if percent >= conf.MaxFillPercent then TreeBucketLastUpdate[uid] = os.time() end
+            TreeBucketFill[uid] = math.max(0.0, percent - taken / conf.MlPerPercent)
+        end
+        TreeStore.SaveBucketToDB(uid)
 
-    TreeBucketFill[uid] = 0.0
-    TreeBucketLastUpdate[uid] = os.time() + cooldown
-    TreeStore.SaveBucketToDB(uid)
+        TriggerClientEvent('gsc_kassippu:client:bucketSync', _source, uid, TreeBucketFill[uid], cooldown)
+        GSC.Notify.Send(_source, string.format(Config.Text.CoconutCollectedNotify, taken), 3000)
+        if leftMl > 0 then
+            GSC.Notify.Send(_source, string.format(Config.Text.CoconutLeftInTreeNotify, leftMl), 4000)
+        end
 
-    TriggerClientEvent('gsc_kassippu:client:bucketSync', _source, uid, 0.0, cooldown)
-    GSC.Notify.Send(_source, Config.Text.CoconutCollectedNotify, 3000)
+        Shared.Debug(string.format(
+            "^2[Coconut]^7 %s collected %dml from %s (%d pot(s) topped up, %d filled, %dml left in the tree, regrowing for %ds)",
+            Character.firstname, taken, uid, topped, filled, math.max(0, leftMl), cooldown))
+    end)
 
-    Shared.Debug(string.format("^2[Coconut]^7 %s collected %dml into a %s from %s (bucket was %.1f%%, regrowing for %ds)",
-        Character.firstname, totalMl, conf.FilledPotItem, uid, percent, cooldown))
-end)
-
----oo[ Use Filled Pot - Pour The Coconut Water Out ]oo---
-exports.vorp_inventory:registerUsableItem(Config.CoconutBucketConf.FilledPotItem, function(data)
-    local _source = data.source
-    local Character = Shared.GetChar(_source)
-    if not Character then return end
-
-    local conf = Config.CoconutBucketConf
-    local metadata = data.item and data.item.metadata or {}
-    local ml = tonumber(metadata.ml) or 0
-
-    ---o[ Take THIS pot ]o---
-    local potId = data.item and data.item.id
-    local function TakeThisPot()
-        return potId ~= nil and exports.vorp_inventory:subItemById(_source, potId, nil, nil, 1) ~= false
-    end
-
-    if ml <= 0 then
-        if not TakeThisPot() then return end
-        exports.vorp_inventory:addItem(_source, conf.RequiredPotItem, 1)
-        return
-    end
-
-    local canCarry = exports.vorp_inventory:canCarryItem(_source, conf.CoconutWaterItem, 1)
-    if not canCarry then
-        GSC.Notify.Send(_source, Config.Text.TreeItemsSearchPocketHeavyNotify, 3000)
-        return
-    end
-
-    local waterMetadata = {
-        label = string.format("Coconut Water (%dml)", ml),
-        description = string.format("%dml of fresh coconut water.", ml),
-        ml = ml,
-        picked = metadata.picked,
-    }
-
-    if not TakeThisPot() then return end
-    exports.vorp_inventory:addItem(_source, conf.RequiredPotItem, 1)
-    exports.vorp_inventory:addItem(_source, conf.CoconutWaterItem, 1, waterMetadata)
-
-    GSC.Notify.Send(_source, Config.Text.CoconutCollectedNotify, 3000)
-    Shared.Debug(string.format("^2[Coconut]^7 %s poured out %dml from a %s", Character.firstname, ml, conf.FilledPotItem))
+    Collecting[_source], CollectingTree[uid] = nil, nil
+    if not ok then print("^1[Coconut]^7 collect failed: " .. tostring(err)) end
 end)
 
 ---oo[ Tree Items Search Rewards Function ]oo---

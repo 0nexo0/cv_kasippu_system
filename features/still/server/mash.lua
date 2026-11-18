@@ -47,14 +47,24 @@ end
 
 ---oo[ Coconut Water In The Satchel ]oo---
 
----o[ Every coconut_water and filled_pot the player carries, freshest first ]o---
+---o[ The metadata a filled pot carries for `ml` (keeps any other keys of `base`) ]o---
+function Mash.PotMetadata(ml, picked, base)
+    local metadata = {}
+    for k, v in pairs(base or {}) do metadata[k] = v end
+    metadata.ml = ml
+    metadata.picked = picked
+    metadata.label = string.format("Coconut Water (%dml)", ml)
+    metadata.description = string.format("A pot filled with %dml of fresh coconut water.", ml)
+    return metadata
+end
+
+---o[ Every filled_pot the player carries, freshest first ]o---
 function Mash.CoconutStacks(src)
     local conf = Config.CoconutBucketConf
     local stacks, totalMl = {}, 0
 
     for _, item in ipairs(exports.vorp_inventory:getUserInventoryItems(src) or {}) do
-        local isWaterItem = item.name == conf.CoconutWaterItem or item.name == conf.FilledPotItem
-        local ml = isWaterItem and item.metadata and tonumber(item.metadata.ml) or 0
+        local ml = item.name == conf.FilledPotItem and item.metadata and tonumber(item.metadata.ml) or 0
         if ml > 0 then
             stacks[#stacks + 1] = {
                 id = item.id, name = item.name, count = item.count, ml = ml,
@@ -75,26 +85,18 @@ function Mash.UseCoconut(src, stacks, usageMl)
     local remaining = usageMl
 
     for _, stack in ipairs(stacks) do
-        local isPot = stack.name == conf.FilledPotItem
-
         for _ = 1, stack.count do
             if remaining <= 0 then return end
 
             if stack.ml <= remaining then
-                if exports.vorp_inventory:subItemById(src, stack.id, nil, nil, 1) and isPot then
+                ---o[ Drained: the pot goes back to an empty one ]o---
+                if exports.vorp_inventory:subItemById(src, stack.id, nil, nil, 1) then
                     exports.vorp_inventory:addItem(src, conf.RequiredPotItem, 1)
                 end
                 remaining = remaining - stack.ml
             else
                 local leftMl = stack.ml - remaining
-                local metadata = {}
-                for k, v in pairs(stack.metadata) do metadata[k] = v end
-                metadata.ml = leftMl
-                metadata.label = string.format("Coconut Water (%dml)", leftMl)
-                metadata.description = isPot
-                    and string.format("A pot filled with %dml of fresh coconut water.", leftMl)
-                    or string.format("%dml of fresh coconut water.", leftMl)
-
+                local metadata = Mash.PotMetadata(leftMl, stack.metadata.picked, stack.metadata)
                 exports.vorp_inventory:setItemMetadata(src, stack.id, metadata, 1)
                 return
             end

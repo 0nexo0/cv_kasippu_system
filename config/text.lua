@@ -643,8 +643,9 @@ Config.Text = {
 
     ---o[ Coconut water ]o---
     CoconutBucketEmptyNotify          = "The bucket isn't full enough yet. Come back later.",
-    CoconutPotRequiredNotify          = "You need an empty pot to collect coconut water!",
-    CoconutCollectedNotify            = "You collected coconut water from the bucket!",
+    CoconutPotRequiredNotify          = "You need an empty pot, or one with room left, to collect coconut water!",
+    CoconutCollectedNotify            = "You collected %dml of coconut water into your pots.", -- ml
+    CoconutLeftInTreeNotify           = "Your pots are full - %dml is still up in the tree.",  -- ml
     CoconutCollectMinigameStartNotify = "Carefully collect the coconut water...",
     CoconutCollectFailNotify          = "You spilled the coconut water!",
     CoconutFillHudLabel               = "Coconut Water",

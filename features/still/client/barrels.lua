@@ -1542,7 +1542,7 @@ local function BuildReceipt(recipe)
 
     local coconutMl = tonumber(recipe.coconutMl) or 0
     if coconutMl > 0 then
-        Add({ Config.Items.CoconutWater }, txt.CoconutWater, txt.InSatchel, string.format(txt.MlPerBatch, coconutMl))
+        Add({ Config.Items.FilledPot }, txt.CoconutWater, txt.InSatchel, string.format(txt.MlPerBatch, coconutMl))
     end
 
     ---o[ A second run: bottles of the first run's spirit ]o---

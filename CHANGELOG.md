@@ -25,9 +25,22 @@ up to date (green), outdated with the changelog lines from that JSON (red), or a
 - **`/removetree` always works for tree admins.** The dev tree commands (`spawntree`, `listtreesdb`,
   `cleartreesdb`, `fixduplicates`) stay behind `Config.DebugTreeCommands`, now **false** by default.
 
+- **Coconut water stays in the pot.** Collecting at a tree now fills the pots you carry: part-filled
+  `filled_pot`s are topped up first (fullest first), then `empty_pot`s are filled, each up to the new
+  `Config.CoconutBucketConf.PotCapacityMl` (1000). Whatever does not fit stays in the tree's pot and can be
+  collected later. The tree's regrow cooldown starts only when its pot is drained. A topped-up pot keeps the
+  older `picked` stamp, so mixing in fresh water does not make old water fresh again. The still takes water
+  from `filled_pot`s only. A pot drained at the still becomes an `empty_pot` again.
+  - Texts: `CoconutCollectedNotify` now shows the ml taken (`%d`), new `CoconutLeftInTreeNotify`,
+    and `CoconutPotRequiredNotify` reworded.
+  - One collect at a time per player and per tree.
+
 ### Removed
 - Unused items in `config/items.lua`: `RecipeArrack`, `SpiritPerfect`, `SpiritGood`, `SpiritNormal`,
   and the commented-out Arrack recipe in `config/recipes.lua`.
+- **`coconut_water` item** (`Config.Items.CoconutWater`, `Config.CoconutBucketConf.CoconutWaterItem`) and
+  using a `filled_pot` to pour it out. Remove `coconut_water` from the `items` table on the server;
+  any `coconut_water` players still carry no longer counts at the still.
 
 ### Fixed
 - Hidden barrel and crate gauges no longer keep a warning animation running behind them (FPS).

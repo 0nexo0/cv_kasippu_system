@@ -170,7 +170,6 @@ Config.Fermentation = {
             apple       = "#c8463a",
             orange      = "#f0902e",
             grape       = "#6e3a72",
-            coconut_water = "#f3efe2",
             coconut     = "#e8dfc8",
         },
     },
