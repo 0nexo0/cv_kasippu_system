@@ -330,6 +330,8 @@ CreateThread(function()
 
                 if dist <= streamIn and not crate.entity then
                     SpawnCrate(crate)
+                    ---o[ Counts only go to players near a crate: ask for the current one as it comes into view ]o---
+                    if crate.entity then TriggerServerEvent('gsc_kassippu:server:crateCountAsk', uid) end
                 elseif dist > streamOut and crate.entity then
                     DespawnCrate(crate)
                 end

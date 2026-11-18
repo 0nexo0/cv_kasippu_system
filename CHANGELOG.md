@@ -86,6 +86,12 @@ up to date (green), outdated with the changelog lines from that JSON (red), or a
   already distributed: each client only senses its own player, the AI only runs on the client that owns the ped,
   raycasts only run while the player is in the yard, and kill and spawn reports are checked by the server.
 
+- **A crate's bottle count no longer goes to the whole server.** Every bottle stored, taken or broken in a crate sent
+  the new count to all players. It now goes only to players within the crate's `StreamDistance` + 40 m (100 m by
+  default), the ones who can see its bottle props. A crate that streams in on a client asks for its current count once
+  (new server event `gsc_kassippu:server:crateCountAsk`, at most once per crate every 5 s per player), so a player
+  coming from further away never sees an old number of bottles.
+
 ### Removed
 - **Radial menu icons trimmed: `nui/vendor/radialmenu.js` 1.1 MB → 66 KB.** Its `icos` table carried every Font
   Awesome Free icon (1,385); it now keeps the 71 whose names appear in the resource's Lua or `nui/script.js`

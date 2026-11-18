@@ -736,10 +736,56 @@ local function SyncCrateGauge(uid, now)
     end
 end
 
+---o[ The bottle count only matters to players who can see the crate's props; anyone further asks when it streams in ]o---
+local COUNT_MARGIN = 30.0 -- metres past the crate's stream-out distance
+
 local function BroadcastCount(uid)
     local crate = CrateList[uid]
-    TriggerClientEvent('gsc_kassippu:client:crateCount', -1, uid, crate and #crate.bottles or 0)
+    if not crate then return end -- a removed crate goes with crateRemoved
+
+    local count = #crate.bottles
+    local reach = (Conf().StreamDistance or 60.0) + 10.0 + COUNT_MARGIN
+    local reachSq = reach * reach
+
+    for _, playerId in ipairs(GetPlayers()) do
+        local target = tonumber(playerId)
+        local ped = target and GetPlayerPed(playerId)
+        if ped and ped ~= 0 then
+            local d = GetEntityCoords(ped) - crate.pos
+            if (d.x * d.x + d.y * d.y + d.z * d.z) <= reachSq then
+                TriggerClientEvent('gsc_kassippu:client:crateCount', target, uid, count)
+            end
+        end
+    end
 end
+
+---o[ A crate just streamed in on a client: its count, as it is now ]o---
+local CountAsked = {} -- [src] = { [uid] = os.time() }
+
+RegisterServerEvent('gsc_kassippu:server:crateCountAsk')
+AddEventHandler('gsc_kassippu:server:crateCountAsk', function(uid)
+    local _source = source
+    if type(uid) ~= 'string' then return end
+
+    local crate = CrateList[uid]
+    if not crate then return end
+
+    local asked = CountAsked[_source]
+    if not asked then
+        asked = {}
+        CountAsked[_source] = asked
+    end
+
+    local now = os.time()
+    if asked[uid] and now - asked[uid] < 5 then return end
+    asked[uid] = now
+
+    TriggerClientEvent('gsc_kassippu:client:crateCount', _source, uid, #crate.bottles)
+end)
+
+AddEventHandler('playerDropped', function()
+    CountAsked[source] = nil
+end)
 
 ---o[ Common front door for every action at a crate ]o---
 local function ValidateAtCrate(src, uid)
