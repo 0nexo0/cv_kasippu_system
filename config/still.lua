@@ -8,12 +8,11 @@ Config.KasiyaBarrelKitConf = {
     StreamDistance              = 80.0,                   -- metres: barrel and fire props only exist within this
     BarrelUsageTime             = 1,                      -- batches before the barrel breaks (only with BarrelCondition off)
     BarrelDestroyingTime        = 10000,                  -- ms between "falling apart" warning and the barrel vanishing
-    SaveEverySeconds            = 60,                     -- a lit or working still is saved this often, so a restart keeps its heat and fuel (min 15)
+    SaveEverySeconds            = 60, -- a lit or working still is saved this often, so a restart keeps its heat and fuel
     MaxPerPlayer                = 1,                      -- most barrels one character can have set down at once (0 = no limit)
 }
 
 ---o[ Picking Up A Barrel ]o---
--- Owner only, barrel must be idle, cold and empty. The kit keeps wear, upgrades and tarp.
 Config.BarrelPickup = {
     Enabled = true,
     HoldMs  = 1500, -- ms to hold the pickup prompt
@@ -30,7 +29,6 @@ Config.BarrelStash = {
 
 ---o[ The Fire ]o---
 Config.Fuel = {
-    -- E puts on the log picked with the arrows. Add more logs here to add choices.
     Logs = {
         wood     = { item = Config.Items.Wood,     label = "Wood",     burnSeconds = 60,  power = 1.0, icon = "fire" },              -- burnSeconds: how long one log lasts
         hardwood = { item = Config.Items.Hardwood, label = "Hardwood", burnSeconds = 120, power = 1.4, icon = "fire-flame-curved" }, -- power: how hot (1.0 = normal); icon: its wedge in the F2 menu
@@ -39,16 +37,12 @@ Config.Fuel = {
 
     ---o[ Heat ]o---
     WarmUpIncrement = 0.2, -- heat gained per second while a cold barrel warms to InitialHeat, x the fire's power
-                           -- (0 -> 40: wood 3 min 20 s, about 4 logs; hardwood 2 min 23 s, 2 logs)
-    HeatIncrement = 1.0,  -- heat gained per second heating up after the ferment, x the fire's power (0 -> 100: wood ~100 s)
-                          -- Above BuildAboveHeat (70) pressure builds: slower than this means more venting before the push
+    HeatIncrement = 1.0, -- heat gained per second heating up after the ferment, x the fire's power
     ManualBoost   = 2.0,  -- instant heat a log adds in the final push, x its power
     CoolDownRate  = 1.0,  -- heat lost per second with the fire out (heating up after the ferment)
     PushCoolRate  = 0.6,  -- heat lost per second with the fire out (final push)
 
     ---o[ Cold stage: forgetting to feed the fire ]o---
-    -- When the fire burns out while she is warming up, the barrel holds its heat a while,
-    -- then cools slowly; the owner and crew are told when it starts.
     ColdGraceSeconds = 60,  -- seconds the barrel keeps its heat after the fire burns out (0 = cools at once)
     ColdCoolRate     = 0.3, -- heat lost per second once that grace is over (1.0 = the old speed)
 
@@ -90,11 +84,8 @@ Config.Mixing = {
         Tries       = 2,    -- goes at the stir: a failed one starts again (1 = no second chance)
         RetryDelay  = 3,    -- sec between a failed stir and the next try
         WaitSeconds = 45,   -- sec the stir may take before it counts as missed (keep it above Minigame.time)
-        MinSeconds  = 4,    -- a stir won sooner than this after it started is not a real game: counted as bad (anti-cheat)
-        ---o[ The spoon: stir with the mouse, drag this batch's ingredients into the pot (same game as Tend) ]o---
-        -- The old hold-Space paddle instead:
-        --   Minigame = { type = "hold", hint = "stir", goal = 4.0, band = 0.26, rise = 0.85, fall = 0.65,
-        --                drift = 0.24, period = 5.0, gusts = 0.35, time = 14 },
+        MinSeconds  = 4, -- a stir won sooner than this after it started is not a real game: counted as bad
+        ---o[ The spoon ]o---
         Minigame    = {
             type = "spoon", hint = "spoon",
             mouse      = true,  -- the cursor shows for this game only
@@ -122,11 +113,9 @@ Config.Mixing = {
 }
 
 ---o[ Fermentation ]o---
--- Between mixing and distilling. Climate (crates.lua) speeds it up or slows it down.
 Config.Fermentation = {
     Enabled      = true, -- false: straight from mixing to heating
 
-    -- A whole run is this wait + about 13 min of work: Hot ~30, Mild ~38, Cold ~42, Freezing ~55 min
     ReadyMinutes = 2,   -- minutes to reach full strength (Mild; climate ageRate speeds / slows it)
     TurnMinutes  = 45,   -- minutes before it starts turning (warning) - 20 min to light the fire once ready
     SpoilMinutes = 55,   -- minutes before the batch is lost (keepRate and spikes shorten both)
@@ -135,17 +124,13 @@ Config.Fermentation = {
     CoolRate     = 0.1,  -- heat lost per second while fermenting
     SpoilResidue = 30.0, -- fouling a ruined wash leaves in the barrel
 
-    ---o[ Tend The Wash - the pot minigame, once per batch while it ferments ]o---
-    -- [G] at the still (owner, or crew with CrewCan.mix). Win or lose, it goes on the final score.
+    ---o[ Tend The Wash ]o---
     Tend = {
         Enabled    = true, -- false: no tending, fermenting is just a wait
         GoodBonus  = 5,    -- score added for a good tend
         BadPenalty = 3,    -- score lost for a botched tend (or giving up)
         MinSeconds = 4,    -- a result sooner than this is not a real game: it counts as botched
-        ---o[ The spoon: stir with the mouse, drag this batch's ingredients into the pot ]o---
-        -- Prefer keys? Use the keyboard pot instead (W D S A round the rim):
-        --   Minigame = { type = "pot", hint = "pot", time = 22, strikes = 2, stirStep = 0.05, frothPerStir = 0.16,
-        --                frothFall = 0.32, dropEvery = 3.5, dropLife = 2.6, dropBonus = 0.14, reverse = true },
+        ---o[ The spoon ]o---
         Minigame   = {
             type = "spoon", hint = "spoon",
             mouse     = true,  -- the cursor shows for this game only (it is played with the mouse)
@@ -160,7 +145,7 @@ Config.Fermentation = {
             frothFall = 0.30,  -- froth that settles per second
             reverse   = false,  -- true: halfway, the stir changes direction (harder)
 
-            ---o[ Lumps: each ingredient sinks in as lumps to break up with the spoon ]o---
+            ---o[ Lumps ]o---
             lumps     = 2,     -- lumps per ingredient (0 = none: it simply mixes in)
             lumpShare = 0.04,  -- mixing each lump holds back until it is broken
             lumpBonus = 0.02,  -- mixed for breaking one
@@ -175,7 +160,7 @@ Config.Fermentation = {
             volume    = 0.5,   -- 0.0 - 1.0
         },
 
-        ---o[ The colour each ingredient gives the wash (item = "#rrggbb"); others get a stock colour ]o---
+        ---o[ The colour each ingredient gives the wash ]o---
         Tints = {
             water       = "#9fc3cf",
             yeast       = "#efe3c4",
@@ -196,7 +181,7 @@ Config.HeatManagement = {
     InitialHeat            = 40.0,  -- a cold barrel warms to this before ingredients can be mixed
     CommonHeat             = 100.0, -- heating up climbs to this, then the pause before the final push
     MaxHeat                = 105.0, -- reaching this blows the barrel
-    HeatInterval           = 60000, -- ms pause at full heat before the final push (pressure builds fast at 100 heat: keep it short)
+    HeatInterval           = 60000, -- ms pause at full heat before the final push
     HeatIncrementDivide    = 2,     -- final push heat per second = Fuel.HeatIncrement / this (1 / 2 = 0.5, keep it there)
     QualityTrackingTime    = 10,    -- seconds to hold a bracket (only with HeatSkill off)
     BrewgProgress          = 100,   -- progress to finish brewing (only with Cuts off)
@@ -231,10 +216,7 @@ Config.HeatSkill = {
     FlareHeat       = 7.0,  -- heat jump when the fire flares
     DraughtHeat     = -6.0, -- heat drop when a draught hits
 
-    ---o[ The game: stoke from the Log Rack, cool from the Water Barrel (Config.Stations) ]o---
-    -- [E] stoke: a split's heat arrives late, spread over StokeSeconds. [R] hold: the tap cools the coil.
-    -- The fire box doesn't burn down in the push (the splits are the fuel); the heat sags on its own.
-    -- Enabled = false: the old push (the fire climbs on its own, E adds a log, R pours a bucket use).
+    ---o[ The game ]o---
     Game = {
         Enabled       = true,
         Sag           = 0.4, -- heat lost per second on its own (a stoke every ~7 s holds the mark)
@@ -246,7 +228,7 @@ Config.HeatSkill = {
         TapWater      = 1.0, -- litres the open tap uses per second
         WarnSeconds   = 3,   -- a flare-up / draught is warned this long before it hits (0 = no warning)
 
-        ---o[ The Firebox: the NUI panel it is played on (drag splits into the fire, the valve, the vent lever) ]o---
+        ---o[ The Firebox ]o---
         Panel         = true, -- false: world prompts instead (E stoke, hold R cool, V vent, T trouble)
         AutoOpen      = true, -- opens by itself when the push starts for owner / crew at the still (else F2 / E)
         Sound         = true, -- crackle, hiss and clank, made in the UI (no files)
@@ -254,8 +236,7 @@ Config.HeatSkill = {
     },
 }
 
----o[ The Water Barrel and the Log Rack - set down beside a still (free placement), they feed Hold The Heat ]o---
--- The items come from your own shop / crafting (database/items.sql registers them). Owner, or crew with the right.
+---o[ The Water Barrel and the Log Rack ]o---
 Config.Stations = {
     Enabled        = true,
     MaxDistance    = 6.0, -- metres from the still they may stand
@@ -263,8 +244,6 @@ Config.Stations = {
     InteractRadius = 1.5, -- metres: how close for its prompts / its F2 menu wedges
     StreamDistance = 80.0, -- metres: the prop only exists within this
     StillUsesStock = true, -- every log and drop of water the still uses comes off these two, never the satchel
-                           -- (Add Wood, Light The Fire, Pour Water, Top Up Condenser, Scrub, Hold The Heat).
-                           -- The satchel only stocks them. false = the satchel, as before
 
     WaterBarrel = {
         Capacity     = 100, -- litres it holds (a whole batch takes about 60-80)
@@ -276,7 +255,7 @@ Config.Stations = {
         BurnOrder = { "wood", "hardwood" },  -- which log a stoke splits first (keys of Config.Fuel.Logs)
     },
 
-    ---o[ When the still blows up, these two go up with it (and are lost, with what they held) ]o---
+    ---o[ When the still blows up, these two go up with it ]o---
     Explosion = {
         Delay  = 0.35, -- seconds after the still (and between the two): a chain, not one bang
         Size   = 1.0,  -- the blast's size (the still's own is 1.5)
@@ -286,10 +265,8 @@ Config.Stations = {
 }
 
 ---o[ The Cuts - catching the spirit ]o---
--- Drip runs 0-100: heads (poison) -> hearts (good) -> tails (oily)
 Config.Cuts = {
     Enabled        = true, -- false: plain progress bar, nothing to do
-
     RunSeconds     = 90,   -- how long the drip runs (sec)
     HeadsEnd       = 20,   -- where the heads usually end (0-100)
     TailsStart     = 75,   -- where the tails usually start (0-100)
@@ -308,16 +285,12 @@ Config.Cuts = {
     TaintedLabel   = nil,  -- nil = normal label; e.g. "Bad %s" to label tainted bottles openly
 }
 
----o[ Bottling - pour the batch from the jug and cork each bottle (the "bottle" minigame) ]o---
--- The hold at a finished still opens the game. Every bottle you overfill, let dribble, or knock over
--- while corking is spilled: its spirit is lost from the batch, the empty bottle is kept.
--- The game can only cost bottles, never add them. Enabled = false: the old one-hold bottling.
+---o[ Bottling ]o---
 Config.Bottling = {
     Enabled       = true,
     HandPour      = 4,    -- bottles poured by hand per hold; the rest of the draw follows your pour
     RestFactor    = 0.5,  -- the rest spill at this share of your hand spill rate (0 = only hand spills count)
     MaxSpillShare = 0.25, -- the rest never take the loss past this share of the bottles drawn
-                          -- (hand spills always count: you saw them go)
     MinPerBottle  = 1.5,  -- a result sooner than this many seconds per hand bottle counts as all spilled
 
     Minigame = {
@@ -354,7 +327,6 @@ Config.Condenser = {
 }
 
 ---o[ Trouble At The Still - random incidents ]o---
--- Fixed with a minigame (T). Owner and crew only.
 Config.Incidents = {
     Enabled           = true,
 
@@ -362,13 +334,8 @@ Config.Incidents = {
     MinGapSeconds     = 240,  -- least time between incidents (sec)
     FirstAfterSeconds = 60,   -- none in a still's first seconds
     RetrySeconds      = 3,    -- wait after a botched fix (sec)
-    MinSeconds        = 1.0,  -- a fix won sooner than this after it started is not a real game: counted as botched (anti-cheat)
+    MinSeconds        = 1.0, -- a fix won sooner than this after it started is not a real game: counted as botched
 
-    -- Per incident:
-    --   stages / needsFire  when it can happen      weight  how often vs the others
-    --   window              seconds to fix it
-    --   while it lasts:     leakPerSecond, burnMultiplier, powerMultiplier, pressureMultiplier, wearPerSecond
-    --   if missed:          missLoss, missPutsOut, missWear, missPressure, missSpikeMinutes
     List = {
         {
             key           = "LID",
@@ -431,13 +398,24 @@ Config.Incidents = {
 }
 
 ---o[ Barrel Upgrades ]o---
--- Used at your still. Effects: scoreBonus, capBonus, wearMultiplier, ventHeatMultiplier, warnAt
 Config.Upgrades = {
     Enabled = true,
     List = {
-        COPPER = { item = Config.Items.CopperCoil,    label = "Copper coil",    scoreBonus = 4, capBonus = 15 },          -- +4 score, top grades from a more worn barrel
-        HOOPS  = { item = Config.Items.IronHoops,     label = "Iron hoops",     wearMultiplier = 0.6 },                   -- 40% less wear
-        GAUGE  = { item = Config.Items.PressureGauge, label = "Pressure gauge", ventHeatMultiplier = 0.5, warnAt = 55 },   -- venting costs half the heat, earlier warning
+        COPPER = {
+            item = Config.Items.CopperCoil, label = "Copper coil", order = 1,
+            scoreBonus = 4, capBonus = 15,
+            desc = "A better condenser. Every batch scores higher, and Perfect / Good still come out of a more worn barrel.",
+        },
+        HOOPS = {
+            item = Config.Items.IronHoops, label = "Iron hoops", order = 2, requires = "BarrelCondition",
+            wearMultiplier = 0.6,
+            desc = "Holds the staves tight. The barrel wears 40% slower, so it keeps its condition and top grades longer.",
+        },
+        GAUGE = {
+            item = Config.Items.PressureGauge, label = "Pressure gauge", order = 3, requires = "Pressure",
+            ventHeatMultiplier = 0.5, warnAt = 55,
+            desc = "Warns you of pressure sooner, and venting it off costs only half the heat.",
+        },
     },
 }
 
@@ -483,9 +461,14 @@ Config.BarrelCondition = {
     ScrubRemoves           = 25.0, -- residue removed per scrub
 
     ---o[ Repair ]o---
-    RepairItem     = Config.Items.BarrelKit, -- a spare kit
-    RepairAmount   = 1,                      -- how many it takes
-    RepairRestores = 60.0,                   -- condition restored (a whole spare kit: worth more than a new barrel's head start)
+    RepairItem     = Config.Items.RepairKit, -- the barrel repair kit
+    RepairKitUses  = 5,                      -- uses in a new repair kit (kept in its metadata; gone after the last)
+    RepairCost     = 1,                      -- kit uses one repair takes
+    RepairRestores = 60.0,                   -- condition restored by one repair
+
+    ---o[ Lifetime (stops one still being farmed forever) ]o---
+    MaxRepairs     = 2, -- repairs a still takes in its life, then no more (0 = no limit)
+    MaxBatches     = 3, -- batches a still makes before it falls apart
 
     ---o[ Warnings ]o---
     WarnConditionAt = 30.0, -- owner is warned when condition drops below this

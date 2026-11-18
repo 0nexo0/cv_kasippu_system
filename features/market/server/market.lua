@@ -1,16 +1,11 @@
 local Market = GSC.module('Market')
 
 ---oo[ The Market: buyers who pay for what you brew (Config.Market) ]oo---
--- The server prices every bottle, keeps each buyer's demand and each character's trust, takes
--- the bottles and pays. The client only says which stacks and how many.
---
--- Money: Character.addCurrency(0, amount) - the cash call this server's own vorp_gangterritory
--- uses (shared/framework.lua). UNVERIFIED against the VORP docs here (Context7 not connected).
 
-local Sessions = {}  -- [src] = { buyer = id, at = os.time() } - the ledger the server opened
+local Sessions = {}
 local LastSale = {}  -- [src] = os.time() of the last sale
-local LastAsk = {}   -- [src] = os.time() of the last camp request
-local Trust = {}     -- [charid] = { trust, sold, day, gained } - cached from gsc_kassippu_trust
+local LastAsk = {}
+local Trust = {}
 local Demand = {}    -- [buyer id] = { sold, since }
 local CampIndex = nil -- the travelling buyer's camp
 
@@ -28,7 +23,7 @@ end
 
 ---oo[ The buyers ]oo---
 
----o[ Every buyer by id: "saloon:<id>" and "traveller" (only while he has a camp) ]o---
+---o[ Every buyer by id ]o---
 function Market.Buyer(id)
     local conf = Conf()
     if id == "traveller" then
@@ -63,7 +58,7 @@ local function Near(src, buyer)
     return #(GetEntityCoords(ped) - buyer.coords) <= (Conf().SellDistance or 4.0)
 end
 
----o[ The travelling buyer moves on: never to the camp he is leaving ]o---
+---o[ The travelling buyer moves on ]o---
 function Market.MoveTraveller()
     local camps = ((Conf().Traveller or {}).Camps) or {}
     if #camps == 0 then CampIndex = nil return nil end
@@ -92,7 +87,7 @@ local function DemandOf(buyerId, now)
     return d
 end
 
----o[ The share of the price for the n-th bottle (0 = first) this period ]o---
+---o[ The share of the price for the n-th bottle this period ]o---
 function Market.DemandRate(n)
     local conf = Conf()
     return math.max(conf.DemandFloor or 0.6, 1 - (conf.DemandDrop or 0.02) * n)
@@ -114,7 +109,7 @@ end
 local function LoadTrust(charid, cb)
     if Trust[charid] then return cb(Trust[charid]) end
     exports.oxmysql:execute('SELECT trust, sold, updated FROM gsc_kassippu_trust WHERE charid = ?', { charid }, function(rows, err)
-        ---o[ Failed: no ledger (not a fresh record that would overwrite his real trust on the next sale) ]o---
+        ---o[ Failed ]o---
         if err then return print("^1[Error]^7 Could not read buyer trust from gsc_kassippu_trust: " .. tostring(err)) end
         local row = rows and rows[1]
         Trust[charid] = Trust[charid] or {
@@ -135,7 +130,7 @@ local function SaveTrust(charid, rec)
         { charid, math.floor(rec.trust + 0.5), rec.sold, os.time() })
 end
 
----o[ Below the starting trust it creeps back with time (RecoverPerHour), from when it was last saved ]o---
+---o[ Below the starting trust it creeps back with time, from when it was last saved ]o---
 function Market.Recover(rec, now)
     local t = Conf().Trust or {}
     local start = t.Start or 50
@@ -147,7 +142,7 @@ function Market.Recover(rec, now)
     return rec
 end
 
----o[ After a sale: honest earns a little (capped per day), hidden taint costs a lot ]o---
+---o[ After a sale ]o---
 function Market.ApplyTrust(rec, bottles, sickBottles)
     local t = Conf().Trust or {}
     if rec.day ~= Today() then rec.day, rec.gained = Today(), 0 end
@@ -181,7 +176,7 @@ local function Hiding()
     return t and t.Enabled and t.HideUntasted
 end
 
----o[ unit = everything but demand; tags = why, for the ledger; hiddenTaint = he finds out later ]o---
+---o[ unit = everything but demand ]o---
 function Market.Offer(item, buyer, trust)
     local conf = Conf()
     local meta = item.metadata or {}
@@ -229,7 +224,7 @@ function Market.Offer(item, buyer, trust)
         price = price * (conf.TaintedKnownRate or 0.4)
         tags[#tags + 1] = tm.Tainted
     elseif meta.tainted then
-        hiddenTaint = true -- priced like any untasted bottle: he finds out when someone drinks it
+        hiddenTaint = true
     end
     if known and meta.tasted and not soured then tags[#tags + 1] = tm.Tasted end
 
@@ -319,7 +314,7 @@ AddEventHandler('gsc_kassippu:server:buyerClose', function()
     Sessions[source] = nil
 end)
 
----o[ The lines the client sent: { { id, qty } }, at most MaxLines, whole numbers, no repeats ]o---
+---o[ The lines the client sent ]o---
 function Market.CleanLines(lines)
     if type(lines) ~= 'table' then return nil end
     local out, seen = {}, {}

@@ -5,11 +5,10 @@ local REGROW_TIME = Config.TreeClimbConf.TreeGrowingTime
 local Rewards = Config.TreeItemsSearchRewards
 local configTreesMigrated = false
 local TreeBucketFill = {}       -- [uid] = cached current percent
-local TreeBucketLastUpdate = {} -- [uid] = unix timestamp of last calculation
-local TreeCoords = {}           -- [uid] = vector3, every tree in the database (search loot is checked against it)
+local TreeBucketLastUpdate = {}
+local TreeCoords = {}
 
----o[ One query, waited for. nil (and the error printed) when it fails - oxmysql only calls back
---     on an error when asked to (the last argument), so a failed query can't hang or vanish ]o---
+---o[ One query, waited for ]o---
 local function Exec(sql, params)
     local p = promise.new()
     exports.oxmysql:execute(sql, params or {}, function(result, err)
@@ -20,9 +19,7 @@ local function Exec(sql, params)
 end
 
 ---oo[ Ensure fill_percent / last_update Columns Exist On gsc_climb_trees ]oo---
--- Read from information_schema, one ALTER per missing column: works on MySQL and MariaDB
--- ("ADD COLUMN IF NOT EXISTS" is MariaDB only, and on MySQL it stopped the trees loading).
-Citizen.CreateThread(function()
+CreateThread(function()
     while GetResourceState('oxmysql') ~= 'started' do Wait(100) end
 
     local columns = Exec([[
@@ -116,7 +113,7 @@ CreateThread(function()
     end
 
     local tickMs = snapshotMinutes * 60 * 1000
-    local written = {} -- [uid] = last value pair written, so untouched trees are skipped
+    local written = {}
 
     while true do
         Wait(tickMs)
@@ -146,9 +143,9 @@ CreateThread(function()
 end)
 
 ---oo[ Climb Rope Requirement Check ]oo---
-local Climbs = {} -- [src] = { uid, at (GetGameTimer) }: the tree the server last let him start up
+local Climbs = {}
 
----o[ Up THIS tree: the server let him start the climb long enough ago to have reached the top, and not too long ago ]o---
+---o[ Up THIS tree ]o---
 local function ClimbedUp(src, uid)
     local climb = Climbs[src]
     if not climb or climb.uid ~= uid then return false end
@@ -167,7 +164,7 @@ AddEventHandler('gsc_kassippu:server:requestClimb', function(uid)
     local requiredItem = Config.TreeClimbConf.ClimbRequiredItem
     local hasRope = exports.vorp_inventory:getItemCount(_source, nil, requiredItem) >= 1
 
-    ---o[ Remember the climb: search and collect ask for it (only a real tree, and only standing at it) ]o---
+    ---o[ Remember the climb ]o---
     local treePos = type(uid) == 'string' and TreeCoords[uid]
     if hasRope and treePos then
         local p = GetEntityCoords(GetPlayerPed(_source))
@@ -192,13 +189,13 @@ local function GetBucketCooldownRemaining(uid)
 end
 
 ---oo[ Send Current Bucket Fill % When Player Reaches Top ]oo---
-local lastSyncRequest = {} -- [src] = last accepted request time (ms)
-local lastTreeRequest = {} -- [src] = ms, so the whole trees table cannot be pulled over and over
+local lastSyncRequest = {}
+local lastTreeRequest = {}
 
 RegisterServerEvent('gsc_kassippu:server:requestBucketSync')
 AddEventHandler('gsc_kassippu:server:requestBucketSync', function(uid)
     local _source = source
-    if type(uid) ~= 'string' or not TreeCoords[uid] then return end -- only a real tree: no cache entries or DB writes for made-up ids
+    if type(uid) ~= 'string' or not TreeCoords[uid] then return end
 
     local now = GetGameTimer()
     local last = lastSyncRequest[_source]
@@ -227,7 +224,7 @@ AddEventHandler('gsc_kassippu:server:collectCoconutWater', function(uid)
     local Character = Shared.GetChar(_source)
     if not Character then return end
 
-    ---o[ Only a real tree, and only standing at it (at its foot or up in it) ]o---
+    ---o[ Only a real tree, and only standing at it ]o---
     local treePos = type(uid) == 'string' and TreeCoords[uid]
     if not treePos then return end
     local p = GetEntityCoords(GetPlayerPed(_source))
@@ -237,7 +234,7 @@ AddEventHandler('gsc_kassippu:server:collectCoconutWater', function(uid)
         return
     end
 
-    ---o[ Only after climbing it: from the ground it is a cheat (anti-cheat, Config.TreeClimbConf.MinClimbSeconds) ]o---
+    ---o[ Only after climbing it ]o---
     if not ClimbedUp(_source, uid) then
         Shared.Debug("^1[Warning]^7 Player " .. _source .. " tried to collect from tree " .. uid .. " without climbing it.")
         return
@@ -307,7 +304,7 @@ exports.vorp_inventory:registerUsableItem(Config.CoconutBucketConf.FilledPotItem
     local metadata = data.item and data.item.metadata or {}
     local ml = tonumber(metadata.ml) or 0
 
-    ---o[ Take THIS pot (by its id): by name vorp may take another pot, and the ml read above is this one's (a dupe) ]o---
+    ---o[ Take THIS pot ]o---
     local potId = data.item and data.item.id
     local function TakeThisPot()
         return potId ~= nil and exports.vorp_inventory:subItemById(_source, potId, nil, nil, 1) ~= false
@@ -347,7 +344,7 @@ AddEventHandler("nx_trees:giveTreeReward", function(treeKey)
     local Character = Shared.GetChar(_source)
     if not Character or not treeKey then return end
 
-    ---o[ Only a real tree, and only standing at it (at its foot or up in it) ]o---
+    ---o[ Only a real tree, and only standing at it ]o---
     local treePos = type(treeKey) == 'string' and TreeCoords[treeKey]
     if not treePos then
         Shared.Debug("^1[Warning]^7 Player " .. _source .. " searched an unknown tree: " .. tostring(treeKey))
@@ -360,7 +357,7 @@ AddEventHandler("nx_trees:giveTreeReward", function(treeKey)
         return
     end
 
-    ---o[ Only after climbing it: from the ground it is a cheat (anti-cheat, Config.TreeClimbConf.MinClimbSeconds) ]o---
+    ---o[ Only after climbing it ]o---
     if not ClimbedUp(_source, treeKey) then
         Shared.Debug("^1[Warning]^7 Player " .. _source .. " searched tree " .. treeKey .. " without climbing it.")
         return
@@ -406,7 +403,7 @@ end)
 
 ---oo[ Tree Admin Check ]oo---
 local function IsTreeAdmin(src)
-    return GSC.Admin.Is(src, Config.TreeAdmin) -- Config.Admin, or the tree admin's own Ace / Groups
+    return GSC.Admin.Is(src, Config.TreeAdmin)
 end
 
 ---oo[ Save Tree to Database ]oo---
@@ -436,7 +433,7 @@ local function SaveTree(coords, heading, onSaved)
     end)
 end
 
----oo[ Admin: Add A Climbable Tree Where You Stand (straight into gsc_climb_trees) ]oo---
+---oo[ Admin ]oo---
 local function Round2(n) return math.floor(n * 100 + 0.5) / 100 end -- the tree uid uses 2 decimals
 
 RegisterCommand(Config.TreeAdmin.AddCommand or 'addtree', function(source, args)
@@ -463,7 +460,6 @@ RegisterCommand(Config.TreeAdmin.AddCommand or 'addtree', function(source, args)
         end
 
         SaveTree(coords, heading, function(uid)
-            -- every client caches it; each spawns it once in range
             TriggerClientEvent('nx_trees:client:spawnTree', -1, uid, { x = coords.x, y = coords.y, z = coords.z }, heading)
             GSC.Notify.Send(_source, string.format(Config.Text.TreeAddDone, uid), 5000)
             Shared.Debug(string.format("^2[DB]^7 %s added tree %s (heading %.0f)", Character.firstname, uid, heading))
@@ -536,11 +532,11 @@ end)
 ---oo[ Auto-load trees when player joins ]oo---
 AddEventHandler("vorp:SelectedCharacter", function(source, character)
     local src = source
-    Citizen.SetTimeout(2000, function() SendTrees(src) end)
+    SetTimeout(2000, function() SendTrees(src) end)
 end)
 
 ---oo[ ONE-TIME Config to Database Migration ]oo---
-Citizen.CreateThread(function()
+CreateThread(function()
     Wait(3000)
 
     if not Config.AutoSaveConfigTrees then
@@ -594,24 +590,24 @@ Citizen.CreateThread(function()
 end)
 
 ---oo[ Admin Commands ]oo---
-if Config.DebugTreeCommands then
-
 local function DeniedTreeCommand(src)
     if IsTreeAdmin(src) then return false end
     GSC.Notify.Send(src, Config.Text.AdminNoAccess, 3000)
     return true
 end
 
+RegisterCommand('removetree', function(source, args, raw)
+    if source == 0 or DeniedTreeCommand(source) then return end
+    TriggerClientEvent('nx_trees:client:removeNearestTree', source)
+end, false)
+
+---oo[ Dev Tree Commands ]oo---
+if Config.DebugTreeCommands then
 RegisterCommand('spawntree', function(source, args, raw)
     if source == 0 or DeniedTreeCommand(source) then return end
     local coords = GetEntityCoords(GetPlayerPed(source))
     TriggerClientEvent('nx_trees:client:spawnTree', source, nil, {x = coords.x, y = coords.y, z = coords.z}, 0.0)
     GSC.Notify.Send(source, "Tree spawned at your location.", 3000)
-end, false)
-
-RegisterCommand('removetree', function(source, args, raw)
-    if source == 0 or DeniedTreeCommand(source) then return end
-    TriggerClientEvent('nx_trees:client:removeNearestTree', source)
 end, false)
 
 RegisterCommand('listtreesdb', function(source, args, raw)
@@ -675,5 +671,4 @@ RegisterCommand('fixduplicates', function(source, args, raw)
     end
     GSC.Notify.Send(source, "Use /fixduplicates from the server console only.", 3000)
 end, false)
-
 end -- Config.DebugTreeCommands

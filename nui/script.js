@@ -1,7 +1,5 @@
 let kassippuConfig = {};
-// the recipes this player's book holds, in tab order (recipe cards included)
 let recipeOrder = [];
-// where the receipt's item pictures come from, "%s" the item name
 let itemImagePath = "";
 let currentRecipe = "";
 
@@ -10,23 +8,13 @@ function recipeKeys() {
 }
 let activeBarrelId = null;
 
-// The barrel's stage key (FREEZE...), the names the book shows for each, and
-// the server's reading of the barrel for the recipe on screen
 let currentStage = "IDLE";
 let stageNames = {};
-// Opened from a recipe card in the satchel: one recipe, nothing about a still
 let readOnlyBook = false;
 let mashPreview = null;
 let currentAmbientSound = null;
 let lootTimer = null;
 
-// The journal and the loot card are shown independently: the body itself stays
-// on the whole time, transparent and click-through, so a toast never needs NUI
-// focus and never dims the screen.
-//
-// The book opens and closes like one (style.css, "THE STILL-MASTER'S BOOK"):
-// .is-open plays the cover swinging back and the pages inking in, .is-closing
-// plays it backwards. The journal stays on screen until the close has finished.
 const JOURNAL_CLOSE_MS = 1150;
 let journalCloseTimer = null;
 
@@ -44,7 +32,6 @@ function setJournalVisible(visible) {
     if (book) book.classList.remove("turning-page", "landed");
     document.body.classList.add("journal-open");
 
-    // restart the animations from the top, even if it was closing just now
     void journal.offsetWidth;
     journal.classList.add("is-open");
     paperSound("open");
@@ -65,8 +52,7 @@ function setJournalVisible(visible) {
   }, JOURNAL_CLOSE_MS);
 }
 
-/* The rustle of paper: filtered noise, swelling and dying, with the odd
-   crackle. Made here rather than shipped as a file. */
+/* The rustle of paper */
 let paperAudio = null;
 
 function paperSound(kind) {
@@ -93,7 +79,6 @@ function paperSound(kind) {
     gain.gain.value = kind === "turn" ? 0.05 : 0.065;
 
     source.connect(filter).connect(gain).connect(ctx.destination);
-    // the cover only starts to move a moment after the book rises
     source.start(ctx.currentTime + (kind === "open" ? 0.45 : 0));
   } catch (e) {
     /* no audio is no reason to break the book */
@@ -181,9 +166,7 @@ function switchCategory(id, element) {
   turnPage(() => loadRecipe(id));
 }
 
-/* Turn a leaf from the right page over to the left. The new receipt is set
-   at once - the right page is under the rising leaf, and the left page's
-   words wait for it to land. */
+/* Turn a leaf from the right page over to the left */
 let leafTimer = null;
 
 function turnPage(swap) {
@@ -209,8 +192,7 @@ function turnPage(swap) {
   }, 740);
 }
 
-/* One ingredient on the receipt: pictures, name over its note, a dotted
-   leader, and how much. A picture the inventory lacks just drops out. */
+/* One ingredient on the receipt */
 function receiptLine(line) {
   const li = document.createElement("li");
   li.className = "receipt-line";
@@ -270,8 +252,7 @@ function loadRecipe(id) {
   if (folioLeft) folioLeft.innerText = String(12 + index * 2);
   if (folioRight) folioRight.innerText = String(13 + index * 2);
 
-  /* The receipt: each ingredient with its picture and how much, then any
-     lines the recipe adds of its own */
+  /* The receipt */
   const ingredientsList = document.querySelector(".ingredients-list");
   if (ingredientsList) {
     ingredientsList.innerHTML = "";
@@ -363,7 +344,6 @@ function renderMashSlip(p) {
     lines.appendChild(row);
   });
 
-  // An empty barrel makes nothing yet: no outcome box, just what to do
   document.querySelector(".mash-outcome").style.display = p.outcome ? "flex" : "none";
   setText("mash-outcome-label", p.outcomeLabel || "");
   setText("mash-outcome", p.outcome || "");
@@ -444,7 +424,6 @@ function renderCrewSlip(roster, text) {
   slip.classList.add("visible");
   text = text || {};
 
-  // An empty Lua table can arrive as {} rather than []
   const crew = Array.isArray(roster.crew) ? roster.crew : [];
   const max = roster.max || 0;
   const full = crew.length >= max;
@@ -476,7 +455,6 @@ function renderCrewSlip(roster, text) {
     ask.innerText = player.asked ? text.Asked || "Asked" : text.Invite || "Ask";
     ask.disabled = !!player.asked;
     ask.onclick = () => {
-      // Marked straight away; the next roster says whether it went out
       ask.disabled = true;
       ask.innerText = text.Asked || "Asked";
       fetch(`https://${GetParentResourceName()}/crewInvite`, {
@@ -488,9 +466,61 @@ function renderCrewSlip(roster, text) {
   });
 }
 
-/* START MIXING only when the barrel is ready for a mix AND the reading
-   says the mash will take - so a player is never sent off to find out
-   from a notification what the slip already knew */
+/* The fittings slip */
+function renderFittingsSlip(fittings) {
+  const slip = document.getElementById("fittings-slip");
+  if (!slip) return;
+
+  const list = fittings && Array.isArray(fittings.list) ? fittings.list : [];
+  if (list.length === 0) {
+    slip.classList.remove("visible");
+    return;
+  }
+  slip.classList.add("visible");
+  const text = fittings.text || {};
+
+  const fitted = list.filter((up) => up.fitted).length;
+  setText("fittings-title", text.Title || "FITTINGS");
+  setText("fittings-count", (text.Count || "%d of %d").replace("%d", fitted).replace("%d", list.length));
+  setText("fittings-hint", text.Hint || "");
+
+  const box = document.getElementById("fittings-list");
+  box.innerHTML = "";
+  list.forEach((up) => {
+    const item = document.createElement("div");
+    item.className = "fitting";
+
+    let end;
+    if (up.fitted) {
+      end = document.createElement("span");
+      end.className = "fitting-done";
+      end.innerText = text.Fitted || "Fitted";
+    } else {
+      end = document.createElement("button");
+      end.className = "crew-ask";
+      end.innerText = text.Fit || "Fit";
+      end.onclick = () => {
+        end.disabled = true;
+        setTimeout(() => (end.disabled = false), 1500);
+        fetch(`https://${GetParentResourceName()}/fitUpgrade`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json; charset=UTF-8" },
+          body: JSON.stringify({ key: up.key }),
+        });
+      };
+    }
+    item.appendChild(crewLine(up.label || up.key, end));
+
+    if (up.desc) {
+      const desc = document.createElement("div");
+      desc.className = "fitting-desc";
+      desc.innerText = up.desc;
+      item.appendChild(desc);
+    }
+    box.appendChild(item);
+  });
+}
+
 function refreshStartButton() {
   const btn = document.getElementById("start-mixing-btn");
   if (!btn) return;
@@ -507,7 +537,7 @@ function refreshStartButton() {
   }
 }
 function updateStatus(data) {
-  if (readOnlyBook) return; // a recipe card has no still to report on
+  if (readOnlyBook) return;
   if (data.heat !== undefined)
     document.getElementById("heat-text").innerText =
       Math.floor(data.heat) + "%";
@@ -527,11 +557,9 @@ function updateStatus(data) {
     document.getElementById("stage-text").innerText =
       (stageNames[stage] && stageNames[stage].label) || stage;
 
-    // What to do next, pencilled into the notes on the right page
     const hint = document.getElementById("journal-hint");
     if (hint) hint.innerText = (stageNames[stage] && stageNames[stage].hint) || "";
 
-    // Mixed (or emptied) while the book was open: the slip follows suit
     if (wasMixable !== canMixNow()) {
       if (canMixNow()) requestMashPreview(currentRecipe);
       else {
@@ -550,8 +578,6 @@ function updateBottleIcons(count) {
   container.innerHTML = "";
   for (let i = 0; i < count; i++) {
     const bottle = document.createElement("div");
-    // The jug is drawn entirely in CSS (.bottle-icon and its two
-    // pseudo-elements); it used to hold a 🧪 lab-flask emoji
     bottle.className = "bottle-icon";
     container.appendChild(bottle);
   }
@@ -590,8 +616,7 @@ function showPart(el, on) {
   el.style.display = on ? "" : "none";
 }
 
-/* Where the needle sat last tick, so the gauge can show which way the heat
-   is going. Cleared when the gauge hides, so a new barrel starts fresh. */
+/* Where the needle sat last tick */
 let lastGaugeHeat = null;
 
 function showGauge(data) {
@@ -644,8 +669,7 @@ function showGauge(data) {
     trouble.classList.remove("visible", "urgent");
   }
 
-  /* The heat scale. The lit part runs up to the needle; both ease in CSS,
-     so a 1 s server tick reads as a smooth slide. */
+  /* The heat scale */
   const heatPct = pctOfScale(heat, maxHeat);
   const dial = document.getElementById("gauge-dial");
   setText("gauge-heat-value", Math.floor(heat) + "%");
@@ -660,8 +684,7 @@ function showGauge(data) {
   trend.innerText = delta > 0.4 ? "▲" : delta < -0.4 ? "▼" : "";
   trend.className = "rd-trend" + (delta > 0.4 ? " up" : delta < -0.4 ? " down" : "");
 
-  /* The band and the drifting mark - graded run only. The number reads
-     gold inside the band, red above it and cold below it. */
+  /* The band and the drifting mark */
   const band = document.getElementById("gauge-band");
   const marker = document.getElementById("gauge-target");
   if (hasTarget) {
@@ -695,8 +718,7 @@ function showGauge(data) {
 
   /* ---- the cores ---- */
 
-  /* The fire: burn left in the box, OUT when it has gone, and a note while
-     rain is getting at it (or embers holding, or how far the smoke shows) */
+  /* The fire */
   const fireRow = document.getElementById("gauge-fire-row");
   const fireRain = document.getElementById("gauge-fire-rain");
   if (data.fire) {
@@ -743,8 +765,7 @@ function showGauge(data) {
     showPart(pressureRow, false);
   }
 
-  /* The barrel itself, rather than the batch. Both vanish entirely when the
-     wear system is switched off server-side; a clean barrel shows no FOUL. */
+  /* The barrel itself, rather than the batch */
   const conditionRow = document.getElementById("gauge-condition-row");
   if (data.condition !== undefined && data.condition !== null) {
     showPart(conditionRow, true);
@@ -764,9 +785,7 @@ function showGauge(data) {
     showPart(residueRow, false);
   }
 
-  /* The fermenting wash. Strength fills the ring; the tick is the least the
-     fire will light under. Below the cores, what it is doing and how long
-     it keeps. */
+  /* The fermenting wash */
   const fermentRow = document.getElementById("gauge-ferment-row");
   const fermentNote = document.getElementById("gauge-ferment-note");
   if (data.ferment) {
@@ -801,8 +820,7 @@ function showGauge(data) {
     fermentNote.classList.remove("visible");
   }
 
-  /* The condenser: its water while the spirit runs, the tick where it runs
-     hot, and a warning line while steam is escaping */
+  /* The condenser */
   const condRow = document.getElementById("gauge-cond-row");
   const condHot = document.getElementById("gauge-cond-hot");
   if (data.condenser) {
@@ -823,8 +841,7 @@ function showGauge(data) {
     condHot.style.display = "none";
   }
 
-  /* Hold The Heat as a game: the Water Barrel's litres (lit while the tap is
-     open), the Log Rack's splits, and the flare-up / draught warned ahead */
+  /* Hold The Heat as a game */
   const waterRow = document.getElementById("gauge-water-row");
   const splitsRow = document.getElementById("gauge-splits-row");
   const pushWarn = document.getElementById("gauge-push-warn");
@@ -857,9 +874,7 @@ function showGauge(data) {
     pushWarn.style.display = "none";
   }
 
-  /* The drip while the spirit is caught. The bar's colour is what is coming
-     off now (heads / hearts / tails), the smell line says the same in words -
-     and warns just before it changes - and the last line says what to do. */
+  /* The drip while the spirit is caught */
   const cutRow = document.getElementById("gauge-cut-row");
   const cutNote = document.getElementById("gauge-cut-note");
   if (data.cut && data.cutText) {
@@ -993,8 +1008,8 @@ const CRATE_TEXT = {
 const crateUI = {
   text: {},
   limits: {},
-  tiers: [],       /* poorest first: [{ key, label }] - Raw is rank 0, these 1..N */
-  lastRank: {},    /* bottle id -> rank last drawn, for the flares */
+  tiers: [],
+  lastRank: {},
   lastSelected: null,
   flares: {},      /* bottle id -> timeout */
 };
@@ -1013,9 +1028,7 @@ function crateRank(slot) {
   return i < 0 ? 0 : i + 1;
 }
 
-/* The spirit darkens as it comes on: pale new spirit, amber, deep gilt.
-   Picked by rank rather than by tier key, so a server's own tiers still
-   colour sensibly. */
+/* The spirit darkens as it comes on */
 const CRATE_LIQUOR = [
   [228, 216, 172],  /* raw */
   [214, 160, 74],
@@ -1100,7 +1113,7 @@ function flare(cell, id, cls) {
   }, 1700);
 }
 
-function setCrateRing(id, fraction) { /* [was a second setRing: it overrode the gauge's percent one] */
+function setCrateRing(id, fraction) {
   const ring = document.getElementById(id);
   if (ring) ring.style.strokeDashoffset = 100 - clamp01(fraction) * 100;
 }
@@ -1398,10 +1411,9 @@ function hideCrateGauge() {
 /*  telling everyone at it the same thing cannot bury the screen.      */
 /* ------------------------------------------------------------------ */
 const NOTIFY_FADE_MS = 360;
-const notifyLive = []; /* { el, key, count, timer } - newest first */
+const notifyLive = [];
 
-/* The wax seals: small hand-inked marks, drawn in the seal's own colour.
-   The seal is chosen in Lua (GSC.Notify.SealFor) from Config.Notify.Icons. */
+/* The wax seals */
 const NOTIFY_SEALS = {
   fire: "M12 3c1.2 3.2 4.5 4.6 4.5 9a4.5 4.5 0 0 1-9 0c0-1.9.8-3.1 1.8-4.1.2 1.9 1.1 2.9 2.2 2.9C11.2 8.2 11 5.6 12 3z",
   water: "M12 3.5s-6 6.6-6 10.7a6 6 0 0 0 12 0c0-4.1-6-10.7-6-10.7z M9.4 14.6a2.7 2.7 0 0 0 2.4 2.6",
@@ -1430,8 +1442,7 @@ function notifySeal(icon) {
   return seal;
 }
 
-/* The text, with its figures (+5, 25%, 30s, x3, 12/12) set bold in the seal's colour.
-   Built from text nodes, never HTML. */
+/* The text, with its figures set bold in the seal's colour */
 const NOTIFY_FIGURE = /(\d+\/\d+|\d+[x×](?=\s)|[x×]\d+(?:[.,]\d+)?|[+\-−]?\d+(?:[.,]\d+)?(?:%|\s?(?:ml|s|m)\b)?)/g;
 
 function notifyRichText(target, text) {
@@ -1501,7 +1512,7 @@ function showNotify(data) {
   }
 
   const el = document.createElement("div");
-  const black = data.style !== "paper"; /* Config.Notify.Style: the black brush plate, or scorched paper */
+  const black = data.style !== "paper";
   el.className = "notify-note kind-" + kind + " seal-" + icon + (black ? " style-black" : "");
 
   if (!black) cgEl("span", "notify-tack", el); /* the brass tack is the paper's */
@@ -1589,17 +1600,15 @@ function radialArc(r, a0, a1) {
   return `M${x0} ${y0}A${r} ${r} 0 0 1 ${x1} ${y1}`;
 }
 
-/* every ring the menu builds (the first and each nested one): bezel + pointer behind, key numbers over it.
-   Nothing added here may carry the class "selected": the menu finds its pick by that class. */
-/* A wedge's name, readable: on one line if it fits the wedge, else split in two at the space nearest the
-   middle; a line still too long gets a slightly smaller size. Returns the number of lines. */
-const RADIAL_FONT = 3.3;     /* the label size in the menu's units (style: #gsc-radial ... > text) */
-const RADIAL_CHAR = 0.74;    /* an average capital's width, as a share of the size */
+/* every ring the menu builds */
+/* A wedge's name, readable */
+const RADIAL_FONT = 3.3;
+const RADIAL_CHAR = 0.74;
 function radialWrapLabel(label, svg) {
   const text = (label.textContent || "").trim();
   const x = parseFloat(label.getAttribute("x")) || 0, y = parseFloat(label.getAttribute("y")) || 0;
   const count = Math.max(3, svg.querySelectorAll("g.sector, g.dummy").length);
-  const room = Math.hypot(x, y) * (2 * Math.PI / count) * 0.82;        /* the wedge's width where the label sits */
+  const room = Math.hypot(x, y) * (2 * Math.PI / count) * 0.82;
   const fits = Math.max(4, Math.floor(room / (RADIAL_FONT * RADIAL_CHAR)));
   let parts = [text];
   if (text.length > fits && text.includes(" ")) {
@@ -1648,14 +1657,13 @@ function radialDecorate(svg) {
   svg.querySelectorAll("g.sector").forEach((g, n) => {
     g.style.setProperty("--i", n);
 
-    /* centre icon + label as one block on the wedge's middle point. The menu shifts the icon twice
-       (x - 5 / y - 8 in createUseTag, then translate(-5,-8) in appendSectorPath), so it sat up and to the left */
+    /* centre icon + label as one block on the wedge's middle point */
     const label = g.querySelector(":scope > text");
     const icon = g.querySelector(":scope > svg");
     const lines = label ? radialWrapLabel(label, svg) : 1;
     if (label && icon) {
       const cx = parseFloat(label.getAttribute("x")), cy = parseFloat(label.getAttribute("y"));
-      const lift = lines > 1 ? 2.2 : 0; /* two lines: the whole block rises so it stays centred */
+      const lift = lines > 1 ? 2.2 : 0;
       icon.removeAttribute("transform");
       icon.setAttribute("x", (cx - 5).toFixed(2));
       icon.setAttribute("y", (cy - 7.4 - lift).toFixed(2)); /* the 10 x 10 icon box */
@@ -1692,7 +1700,7 @@ function radialSwing(ptr, target) {
   requestAnimationFrame(run);
 }
 
-/* caption, badges and pointer follow whatever the current ring has picked */
+/* caption, badges and pointer follow whatever the current ring has picke */
 function radialSync() {
   const m = gscRadial;
   if (!m || !m.currentMenu) return;
@@ -1735,7 +1743,7 @@ function radialOpen(data) {
     menuItems: data.items || [],
     onClick: (item) => {
       if (!item) return;
-      if (item.items) { /* its own ring just opened: name it after the wedge */
+      if (item.items) {
         if (gscRadial.currentMenu) gscRadial.currentMenu.dataset.place = item.title || "";
         radialSync();
         return;
@@ -1756,7 +1764,7 @@ function radialOpen(data) {
   cap.querySelector(".hint").textContent = gscRadialText.hint || "";
   m.holder.appendChild(cap);
 
-  /* every pick, by mouse, wheel or key, moves the caption, pointer and numbers (and ticks) */
+  /* every pick, by mouse, wheel or key, moves the caption, pointer and num */
   const pick = m.setSelectedIndex.bind(m);
   m.setSelectedIndex = (index) => {
     const before = m.getSelectedIndex();
@@ -1828,8 +1836,7 @@ function radialHint(data) {
   if (data.show) radialHintPlace();
 }
 
-/* At a still or a crate the tag sits right on top of its gauge (left), lit gold; anywhere else bottom right.
-   Called when the tag shows and whenever a gauge comes or goes. */
+/* At a still or a crate the tag sits right on top of its gauge, lit gold */
 function radialHintPlace() {
   const box = document.getElementById("gsc-radial-hint");
   if (!box || !box.classList.contains("show")) return;
@@ -1854,10 +1861,9 @@ function radialHoldEnd() {
   document.getElementById("gsc-radial-hold").classList.remove("show");
 }
 
-/* GSC.UiGuard: every screen that takes the focus, hidden without posting back (Lua already let them go).
-   all = the reset command: the gauges too (Lua sends them again with the next reading). */
+/* GSC.UiGuard */
 function uiReset(all) {
-  const step = (fn) => { try { fn(); } catch (e) { /* one broken screen must not keep the rest up */ } };
+  const step = (fn) => { try { fn(); } catch (e) { } };
   step(() => { setJournalVisible(false); renderMashSlip(null); renderCrewSlip(null); });
   step(() => radialClose());
   step(() => radialHoldEnd());
@@ -1947,8 +1953,6 @@ window.addEventListener("message", (event) => {
   }
 
   if (data.action === "openMyUI") {
-    // The journal shows the same numbers in more detail; two of them on
-    // screen at once just fight each other
     hideGauge();
     readOnlyBook = !!data.readOnly;
     document.body.classList.toggle("journal-readonly", readOnlyBook);
@@ -1957,21 +1961,18 @@ window.addEventListener("message", (event) => {
     recipeOrder = Array.isArray(data.recipeOrder) ? data.recipeOrder : Object.keys(kassippuConfig);
     itemImagePath = data.itemImages || "";
     stageNames = data.stages || {};
-    // Known before the first recipe loads, so it knows whether to ask for
-    // a reading of the barrel
     currentStage = data.stage || "IDLE";
 
     currentRecipe = data.defaultRecipe || recipeKeys()[0] || "";
 
-    // Last barrel's crew, until this one's roster comes in
     renderCrewSlip(null);
     renderTarp(data.tarp || null);
+    renderFittingsSlip(data.fittings || null);
     setJournalVisible(true);
     initJournal();
     updateStatus(data);
   } else if (readOnlyBook && document.body.classList.contains("journal-open")
-      && ["mixPreview", "tarpState", "crewRoster"].includes(data.action)) {
-    // a still's news while a recipe card is open: not for this book
+      && ["mixPreview", "tarpState", "crewRoster", "fittingsState"].includes(data.action)) {
   } else if (data.action === "updateStatus" || data.action === "updateHeatUI") {
     updateStatus(data);
   } else if (data.action === "mixPreview") {
@@ -1982,6 +1983,8 @@ window.addEventListener("message", (event) => {
     }
   } else if (data.action === "tarpState") {
     renderTarp(data.tarp || null);
+  } else if (data.action === "fittingsState") {
+    renderFittingsSlip(data.fittings || null);
   } else if (data.action === "crewRoster") {
     renderCrewSlip(data.roster || null, data.text);
   } else if (data.action === "closeUI") {
@@ -2012,8 +2015,7 @@ function closeMenu() {
   });
 }
 
-/* The tarp's line in the ledger: none, or rigged, and the label to change it.
-   null (a stranger, or no tarps on this server) leaves it off the page. */
+/* The tarp's line in the ledger */
 let tarpWait = null;
 
 function renderTarp(tarp) {
@@ -2035,8 +2037,7 @@ function renderTarp(tarp) {
 function toggleTarp() {
   const btn = document.getElementById("tarp-btn");
   btn.disabled = true;
-  /* Back on when the tarp changes, or after a moment if the server said no
-     (no tarp in the satchel, no room for it) */
+  /* Back on when the tarp changes, or after a moment if the server said no */
   clearTimeout(tarpWait);
   tarpWait = setTimeout(() => (btn.disabled = false), 1500);
 
@@ -2059,8 +2060,6 @@ function startMixing() {
 }
 
 document.onkeyup = (e) => {
-  // A crate minigame takes ESC as "give up"; closing the journal here as
-  // well would post closeUI and pull NUI focus out from under the game
   if (e.key === "Escape" && ledger) {
     buyerCancel();
     return;
@@ -2070,8 +2069,7 @@ document.onkeyup = (e) => {
     tasteCancel();
     return;
   }
-  /* only the journal's own Esc: from the F2 menu (a sub-ring's "back") or the Firebox panel it used to
-     post closeUI too, and that pulled the focus out from under a menu still on screen (stuck) */
+  /* only the journal's own Esc */
   if (e.key === "Escape" && !skillGame && !gscRadial && document.body.classList.contains("journal-open")) closeMenu();
 };
 
@@ -2497,20 +2495,16 @@ const CG_MODES = {
     },
   },
 
-  /* ---- Tend the wash: stir round the pot, fold in what floats up, don't froth over ----
-     The paddle goes rim mark to rim mark (W top, D right, S bottom, A left), the next one
-     lit. Each sweep mixes the wash and works up froth; froth settles on its own, and if it
-     reaches the rim it boils over (a miss). An ingredient floats up at a mark now and then:
-     sweep onto it to fold it in for a big push. Halfway, the stir changes direction. */
+  /* Tend the wash */
   pot: {
     init(g, stage) {
       const s = g.spec;
       g.total = 1;
       g.mix = 0;
       g.froth = 0;
-      g.at = 0;                 /* the mark the paddle rests on (0 = W, top) */
+      g.at = 0;
       g.dir = 1;                /* +1 clockwise, -1 the other way */
-      g.angle = 0;              /* the paddle's turn, counted on so it never spins back */
+      g.angle = 0;
       g.flipped = false;
       g.drop = null;            /* { pos, label, until } */
       g.nextDrop = (s.dropEvery || 3.5) * 0.6;
@@ -2598,7 +2592,7 @@ const CG_MODES = {
     key(g, code) {
       const letter = CG_ARROW_KEYS[code] || (code.startsWith("Key") ? code.slice(3) : null);
       const idx = POT_KEYS.indexOf(letter);
-      if (idx < 0 || idx === g.at) return; /* not a pot key, or the mark it already rests on */
+      if (idx < 0 || idx === g.at) return;
 
       const s = g.spec;
       const next = (g.at + g.dir + 4) % 4;
@@ -2648,14 +2642,7 @@ const CG_MODES = {
     },
   },
 
-  /* ---- Tend the wash with a spoon: a living pot, the mouse stirs, the hand adds ----
-     Circle the spoon to stir; the pace matters (too slow mixes at half, too fast froths and
-     the froth boils over - a miss). The mixing comes in stages: each calls for one of the
-     batch's own ingredients from the tray, dragged onto the pot. It sinks in as lumps of its
-     colour that drift round with the swirl - break every one with the spoon to finish the
-     stage. Steady stirring in the gold band builds a Smooth streak that mixes faster. Halfway
-     the stir flips. The wash is drawn on a canvas: its colour takes on what goes in, streaks
-     follow the spoon, it bubbles as it comes alive, froth is real foam at the rim. */
+  /* Tend the wash with a spoon */
   spoon: {
     init(g, stage) {
       const s = g.spec;
@@ -2667,20 +2654,20 @@ const CG_MODES = {
       g.dir = 1;             /* +1 = clockwise on screen */
       g.flipped = false;
       g.speed = 0;           /* turns a second, smoothed */
-      g.turnAcc = 0;         /* radians swept since the last frame, signed */
-      g.stirAngle = 0;       /* how far the wash has turned, for the drawing */
-      g.washSpin = 0;        /* radians a second the wash itself is turning (it lags the spoon) */
+      g.turnAcc = 0;
+      g.stirAngle = 0;
+      g.washSpin = 0;
       g.lastAng = null;
       g.warn = null;         /* { text, until } */
       g.flipUntil = 0;
       g.calls = calls;
       g.streak = 0;          /* 0..1, steady stirring in the band */
-      g.lumps = [];          /* { a, r, size, tint, wob } - drift round with the wash */
-      g.particles = [];      /* { x, y, vx, vy, age, life, size, color } in wash units (-1..1) */
+      g.lumps = [];
+      g.particles = [];
       g.bubbles = [];        /* { x, y, size, age, life } */
-      g.wake = [];           /* { x, y, t } - where the spoon's bowl has been */
-      g.inks = [];           /* { tint, amt, a } - a new ingredient's colour, being stirred in */
-      g.spoonNorm = null;    /* the spoon's bowl in wash units, while it is in the wash */
+      g.wake = [];
+      g.inks = [];
+      g.spoonNorm = null;
       g.color = [138, 84, 33]; /* the wash: starts as plain amber */
       g.bubbleClock = 0;
       g.foam = [];
@@ -2705,11 +2692,11 @@ const CG_MODES = {
         const j = Math.floor(Math.random() * (i + 1));
         [order[i], order[j]] = [order[j], order[i]];
       }
-      g.needed = order.slice(0, g.steps);   /* tray slots, in the order they are called */
+      g.needed = order.slice(0, g.steps);
       g.added = 0;
-      g.waiting = true;                     /* the first ingredient goes in before any mixing */
+      g.waiting = true;
       g.callStart = 0;
-      g.total = g.steps;                    /* the foot's pips count the ingredients in */
+      g.total = g.steps;
       g.done = 0;
 
       /* the pot: clay rim (CSS), the living wash (canvas), steam, the spoon */
@@ -2722,7 +2709,7 @@ const CG_MODES = {
       g.spoonEl = cgEl("div", "cg-spoon-tool", vessel);
       cgEl("div", "cg-spoon-handle", g.spoonEl);
       cgEl("div", "cg-spoon-bowl", g.spoonEl);
-      g.spoonPos = null; /* { x, y } in px from the pot's centre; null = resting */
+      g.spoonPos = null;
 
       g.callEl = cgEl("div", "cg-pot-call", wrap);
 
@@ -2754,7 +2741,7 @@ const CG_MODES = {
         return { row: r, bar, fill: cgEl("div", "cg-pot-meter-fill", bar) };
       };
       const speed = row(labels.speed || "Stir", "speed");
-      g.speedScale = (s.maxSpeed || 1.4) * 1.8; /* the bar's full width, in turns a second */
+      g.speedScale = (s.maxSpeed || 1.4) * 1.8;
       const band = cgEl("div", "cg-spoon-band", speed.bar);
       band.style.left = cgPct((s.minSpeed || 0.5) / g.speedScale);
       band.style.width = cgPct(((s.maxSpeed || 1.4) - (s.minSpeed || 0.5)) / g.speedScale);
@@ -2799,7 +2786,7 @@ const CG_MODES = {
       const dist = Math.hypot(p.x, p.y);
       g.spoonPos = dist <= p.R * 1.35 ? p : null;
 
-      /* only a spoon in the wash stirs it, and not while carrying an ingredient */
+      /* only a spoon in the wash stirs it, and not while carrying an ingredien */
       const inWash = dist >= p.R * 0.18 && dist <= p.R * 0.95;
       const washR = p.R * SPOON_WASH;
       g.spoonNorm = inWash && !g.drag ? { x: p.x / washR, y: p.y / washR } : null;
@@ -2829,7 +2816,7 @@ const CG_MODES = {
       const bowl = g.bowlEls[i];
       if (bowl.classList.contains("used")) return;
       e.preventDefault();
-      if (g.audio) g.audio.wake(); /* a click: the page may now make sound */
+      if (g.audio) g.audio.wake();
 
       /* a copy of the dish follows the hand */
       const ghost = cgEl("div", "cg-tray-ghost", document.body);
@@ -2857,7 +2844,7 @@ const CG_MODES = {
     },
 
     drop(g, i, at) {
-      if (!g.waiting) return; /* nothing called yet: it simply goes back to the tray */
+      if (!g.waiting) return;
       const item = g.trayItems[i];
       const spot = at || { x: 0, y: -0.3 };
 
@@ -2873,7 +2860,7 @@ const CG_MODES = {
         /* it goes in as lumps of its colour, and its colour starts to swirl in */
         const n = Math.max(0, Math.round(g.spec.lumps == null ? 4 : g.spec.lumps));
         for (let k = 0; k < n; k++) {
-          const r0 = 0.38 + Math.random() * 0.34; /* where a hand stirs, not lost by the centre */
+          const r0 = 0.38 + Math.random() * 0.34;
           g.lumps.push({
             a: Math.random() * Math.PI * 2, r0, r: r0,
             drift: Math.random() * Math.PI * 2, driftRate: 0.6 + Math.random() * 0.8, /* wanders in and out */
@@ -2897,7 +2884,7 @@ const CG_MODES = {
       const turned = g.turnAcc;
       g.turnAcc = 0;
 
-      /* how fast the spoon goes round, smoothed so a jerk does not count as a sprint */
+      /* how fast the spoon goes round, smoothed so a jerk does not count as a  */
       const inst = Math.abs(turned) / (Math.PI * 2) / Math.max(dt, 0.001);
       g.speed += (inst - g.speed) * Math.min(1, dt * 6);
 
@@ -2943,7 +2930,7 @@ const CG_MODES = {
       for (const l of g.lumps) {
         l.a += g.washSpin * dt * dodge * (0.6 + 0.5 * l.r);
         l.drift += dt * l.driftRate;
-        l.r = l.r0 + Math.sin(l.drift) * 0.1; /* never in lock-step with a steady circle */
+        l.r = l.r0 + Math.sin(l.drift) * 0.1;
         l.wob += dt * 3;
       }
 
@@ -2971,7 +2958,7 @@ const CG_MODES = {
         }
       }
 
-      /* the mixing, in the right direction, up to what has been added and broken up */
+      /* the mixing, in the right direction, up to what has been added and brok */
       const cap = g.added / g.steps;
       const held = cap - (s.lumpShare == null ? 0.04 : s.lumpShare) * g.lumps.length;
       if (turns > 0) {
@@ -2982,7 +2969,7 @@ const CG_MODES = {
         /* going round the wrong way at a real stir (not a twitch): it does not mix */
         g.warn = { text: g.calls.wrongWay || "Other way round!", until: g.elapsed + 0.8 };
       }
-      g.mix = Math.min(g.mix, cap); /* never past what has gone in (and never pulled back) */
+      g.mix = Math.min(g.mix, cap);
       g.inks = g.inks.filter((ink) => ink.amt > 0.01);
 
       /* the wash takes on the colour of what has gone in, as it is mixed */
@@ -3111,7 +3098,7 @@ const CG_MODES = {
 
   /* ---- Tasting: nose the glass (hold SPACE, let go in the gold), then catch three flavours ---- */
   taste: {
-    holds: true, /* SPACE is held, not pressed: the key handlers set g.holding */
+    holds: true,
 
     init(g, stage) {
       const s = g.spec;
@@ -3180,7 +3167,7 @@ const CG_MODES = {
 
     toPalate(g) {
       g.phase = "palate";
-      g.palateT = -0.5; /* a beat to swallow before the first flavour */
+      g.palateT = -0.5;
       g.wrapEl.classList.remove("phase-nose");
       g.wrapEl.classList.add("phase-palate");
       if (g.labels.palateHint) document.getElementById("cg-hint").innerText = g.labels.palateHint;
@@ -3282,13 +3269,13 @@ const CG_MODES = {
 
   /* ---- Bottling: pour each bottle from the jug to the chalk mark, then cork it ---- */
   bottle: {
-    holds: true, /* SPACE is held to pour; a fresh press corks (read from g.holding) */
+    holds: true,
 
     init(g, stage) {
       const s = g.spec;
       const L = s.labels || {};
       g.labels = L;
-      g.total = 1; /* the shelf shows the progress, not the pips */
+      g.total = 1;
       g.rounds = Math.max(1, Math.floor(s.rounds || 4));
       g.outcomes = [];
       g.index = -1;
@@ -3355,7 +3342,7 @@ const CG_MODES = {
       g.bottleT = 0;
       g.perfect = false;
       g.band = s.band || 0.09;
-      g.markAt = 0.75 + Math.random() * 0.08; /* the chalk sits a little higher or lower on each */
+      g.markAt = 0.75 + Math.random() * 0.08;
       g.tries = Math.max(1, s.corkTries || 2);
       g.bottleEl.className = "cg-btl-bottle slide-in";
       g.corkEl.className = "cg-btl-cork";
@@ -3517,12 +3504,11 @@ const CG_MODES = {
 };
 
 /* ---- the bottling game's helpers ---- */
-/* The bottle, drawn in a 40 x 100 box: spirit level 0 is its base (y 96), 1 its brim (y 5).
-   The neck starts at about 0.72 of the way up; there it is a third of the body's width. */
+/* The bottle, drawn in a 40 x 100 box */
 const BOTTLE_BASE = 96;
 const BOTTLE_BRIM = 5;
 const BOTTLE_NECK = 0.72;
-const BOTTLE_NECK_SPEED = 2.2; /* the narrow neck fills this much faster than the body */
+const BOTTLE_NECK_SPEED = 2.2;
 const BOTTLE_PATH = "M15.5 5 H24.5 V30 C24.5 37 35 39.5 35 49 V91 Q35 96 30 96 H10 Q5 96 5 91 V49 C5 39.5 15.5 37 15.5 30 Z";
 
 const BOTTLE_SVG =
@@ -3558,8 +3544,7 @@ const BOTTLE_JUG_SVG =
   `<path class="jug-band" d="M9 40 C20 43 42 43 55 40"/>` +
   `</svg>`;
 
-/* The bottling game's sound, made in the page: the pour is filtered noise that climbs in
-   pitch as the bottle fills (as a real one does), a wooden tock for the cork, a splash */
+/* The bottling game's sound, made in the page */
 function bottleAudio(volume) {
   let ac = null;
   try {
@@ -3636,7 +3621,7 @@ function bottleAudio(volume) {
 }
 
 /* ---- the spoon's helpers ---- */
-const SPOON_WASH = 0.8; /* the wash is the pot less its rim: 80% of the pot's width */
+const SPOON_WASH = 0.8;
 const SPOON_PALETTE = ["#efe3c4", "#6b3a17", "#d8b24a", "#b8452f", "#7a3f7e", "#8fb35a"];
 
 function spoonRgb(hex) {
@@ -3820,8 +3805,7 @@ function spoonDraw(g) {
   ctx.restore();
 }
 
-/* The spoon's sounds, made on the spot (no audio files). Quiet, and silent if the page
-   cannot make sound at all. */
+/* The spoon's sounds, made on the spot */
 function spoonAudio(volume) {
   let ac = null;
   try {
@@ -3902,8 +3886,6 @@ function spoonAudio(volume) {
 const POT_KEYS = ["W", "D", "S", "A"];
 const POT_EPS = 1e-6;
 
-/* Put the floating ingredient's tag on the wash, by the mark it can be folded in at.
-   Done when it appears (not only when drawn) so a fold always animates in the right place. */
 function potPlaceChip(g) {
   if (!g.drop) return;
   const a = (g.drop.pos * Math.PI) / 2;
@@ -3939,7 +3921,7 @@ function cgStart(data) {
     done: 0,
     total: 1,
     elapsed: 0,
-    ready: 0.7, /* a beat to find the keys before anything moves */
+    ready: 0.7,
     live: false,
     over: false,
     last: performance.now(),
@@ -4011,8 +3993,7 @@ function cgFinish(passed, quit) {
   cgBanner(passed ? g.winText || g.text.win || "Well Done"
     : quit ? g.text.quit || "Gave Up" : g.loseText || g.text.lose || "Botched", passed ? "win" : "lose");
 
-  /* A compact game is one of a run (a grip on every rung): a long stamp there
-     holds the climber at the rung for nothing */
+  /* A compact game is one of a run */
   setTimeout(() => {
     if (skillGame !== g) return;
     cgStop();
@@ -4034,7 +4015,7 @@ function cgFinish(passed, quit) {
 function cgStop() {
   if (skillGame) {
     skillGame.stopped = true;
-    if (skillGame.cleanup) skillGame.cleanup(); /* a mode's own listeners and floating bits */
+    if (skillGame.cleanup) skillGame.cleanup();
   }
   skillGame = null;
   document.getElementById("minigame").className = "";
@@ -4080,10 +4061,10 @@ window.addEventListener("keyup", (e) => {
 let tastePickerOpen = false;
 let tasteCardTimer = null;
 let tasteCardLeave = null;
-let tastePicker = null; /* { list, sel, tint, agedTint, sipping, timer } */
+let tastePicker = null;
 
-const TASTE_SIP_MS = 520;      /* the cup tips before the tasting starts */
-const TASTE_CUP_EMPTY = 112;   /* liquid offset in the cup's own units: empty ... */
+const TASTE_SIP_MS = 520;
+const TASTE_CUP_EMPTY = 112;
 const TASTE_CUP_FULL = 52;     /* ... and poured */
 
 /* written out per callback (not one helper with the name in a variable) so the code map can pair both ends */
@@ -4353,10 +4334,10 @@ document.getElementById("tp-sip").addEventListener("click", () => tasteSip());
 /*  same falloff as Market.DemandRate - so you watch it sink as you    */
 /*  pile bottles on the table.                                         */
 /* ------------------------------------------------------------------ */
-let ledger = null; /* { buyer, rows, qty: {id: n}, left, soldBefore, drop, floor, text, sel, done } */
+let ledger = null;
 
 const LEDGER_HOLD_MS = 650;  /* how long Shake On It is held */
-const LEDGER_ROLL_MS = 380;  /* the total rolling to its new figure */
+const LEDGER_ROLL_MS = 380;
 
 function ledgerRound(x) {
   return Math.floor(x * 100 + 0.5) / 100;
@@ -4956,7 +4937,7 @@ function pushPanelMessage(data) {
     ppSetTap(false, true);
     ppDrop(false);
     root.className = "";
-    cancelAnimationFrame(pp.raf); /* nothing drawn while an incident's game has the screen */
+    cancelAnimationFrame(pp.raf);
     pp.raf = null;
   } else if (data.resume) {
     root.className = "open";
@@ -5205,8 +5186,6 @@ function ppLoop(now) {
   pp.raf = requestAnimationFrame(ppLoop);
 }
 
-/* The flame and smoke are drawn from a few small pre-painted sprites (made once), never a gradient per
-   particle; the fire is redrawn 30 times a second at most and keeps no more than PP_MAX_PARTS alive. */
 const PP_MAX_PARTS = 240, PP_MAX_SMOKE = 70, PP_FIRE_MS = 33;
 let ppSprites = null;
 

@@ -1,6 +1,6 @@
 local Minigame = GSC.module('Minigame')
 
-local pending = nil -- the promise the current Play is waiting on
+local pending = nil
 
 local function Settle(result, score, outcomes)
     local p = pending
@@ -10,7 +10,7 @@ end
 
 RegisterNUICallback('minigameResult', function(data, cb)
     cb('ok')
-    local score = data and tonumber(data.score) -- how well it went, 0 - 1 (only games that grade it, e.g. taste)
+    local score = data and tonumber(data.score)
     local outcomes = data and type(data.outcomes) == 'table' and data.outcomes or nil -- per round (e.g. each bottle poured)
     Settle(data and data.passed == true, score and math.max(0, math.min(1, score)) or nil, outcomes)
 end)
@@ -26,8 +26,7 @@ function Minigame.Cancel()
     Settle(nil)
 end
 
----o[ Play one and wait for the result: passed (true / false / nil = cancelled), a 0 - 1 score if the game keeps one,
---     and the outcome of each round if the game reports them (the bottling game: "clean" / "spill" per bottle) ]o---
+---o[ Play one and wait for the result ]o---
 function Minigame.Play(game, title)
     game = game or {}
     if pending then Minigame.Cancel() end
@@ -37,7 +36,7 @@ function Minigame.Play(game, title)
 
     local hints = Config.Text.MinigameHints or {}
 
-    SetNuiFocus(true, game.mouse == true) -- the cursor only for a game played with the mouse (the spoon)
+    SetNuiFocus(true, game.mouse == true)
     SendNUIMessage({
         action = "startMinigame",
         game = game,
@@ -46,7 +45,7 @@ function Minigame.Play(game, title)
         text = Config.Text.MinigameBanners,
     })
 
-    ---o[ Watchdog while it runs: another screen closing must not leave the game on screen without the keys ]o---
+    ---o[ Watchdog while it runs ]o---
     CreateThread(function()
         while pending == p do
             Wait(200)
@@ -59,7 +58,7 @@ function Minigame.Play(game, title)
         end
     end)
 
-    Citizen.SetTimeout(math.floor(((game.time or 15) + 5) * 1000), function()
+    SetTimeout(math.floor(((game.time or 15) + 5) * 1000), function()
         if pending == p then
             SendNUIMessage({ action = "cancelMinigame" })
             Settle(false)
@@ -72,7 +71,7 @@ function Minigame.Play(game, title)
     return settled[1], settled[2], settled[3]
 end
 
----o[ Stopped mid-game: the page goes with the resource, the focus would not ]o---
+---o[ Stopped mid-game ]o---
 AddEventHandler('onResourceStop', function(resourceName)
     if GetCurrentResourceName() ~= resourceName then return end
 

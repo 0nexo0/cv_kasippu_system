@@ -1,14 +1,10 @@
 local Tasting = GSC.module('Tasting')
 
 ---oo[ Tasting: a sip that tells you what is really in the bottle ]oo---
--- Use a Tasting Cup, pick an untasted bottle, play the nose-and-palate game. A good reading
--- writes the bottle's grade, notes and flaws onto it for good (Config.Tasting).
--- What it reveals comes from the batch itself (GSC.Distillery's profile, kept on the bottle as
--- metadata.profile = "score;notes;flaws"): the client only reports how well it read, 0 - 1.
 
-local Sessions = {} -- [src] = { id, started } - the one bottle this player is tasting
-local Cooldown = {} -- [src] = os.time() before which they cannot taste again
-local LastPick = {} -- [src] = os.time() of their last pick, so picks cannot be spammed
+local Sessions = {}
+local Cooldown = {}
+local LastPick = {}
 
 local function Conf()
     return Config.Tasting or {}
@@ -37,7 +33,7 @@ function Tasting.Decode(text)
     return { score = tonumber(score), notes = List(notes), flaws = List(flaws) }
 end
 
----o[ A bottle with no profile (given by an admin, or untagged): what its grade tastes like ]o---
+---o[ A bottle with no profile ]o---
 local GRADE_NOTE = { PERFECT = "rich", GOOD = "plain", NORMAL = "sharp" }
 
 local function GradeLabel(quality)
@@ -69,7 +65,7 @@ function Tasting.Read(meta, quality, accuracy)
     end
     if #notes == 0 then notes[1] = GRADE_NOTE[quality or ""] or "plain" end
 
-    if not full then -- a quick taste: the main note and the worst flaw
+    if not full then
         notes = { notes[1] }
         flaws = flaws[1] and { flaws[1] } or {}
     end
@@ -111,7 +107,7 @@ function Tasting.Describe(meta, recipeKey, quality, reading)
     if out.proof then desc = desc .. string.format(Config.Text.BottleProof, tonumber(out.proof) or 0) end
     if out.tainted then
         desc = desc .. Config.Text.Cuts.TaintedDescription
-        if Config.Cuts.TaintedLabel and Config.Tasting.HideUntasted then -- held back at bottling (MakeBottle); tasted once
+        if Config.Cuts.TaintedLabel and Config.Tasting.HideUntasted then
             out.label = string.format(Config.Cuts.TaintedLabel, out.label or product)
         end
     end
@@ -180,7 +176,7 @@ if Conf().Enabled and Config.Items.TastingCup then
     end)
 end
 
----o[ A bottle picked: open the one tasting the server will accept a result for ]o---
+---o[ A bottle picked ]o---
 RegisterServerEvent('gsc_kassippu:server:tastePick')
 AddEventHandler('gsc_kassippu:server:tastePick', function(id)
     local _source = source
@@ -201,7 +197,7 @@ AddEventHandler('gsc_kassippu:server:tastePick', function(id)
     TriggerClientEvent('gsc_kassippu:client:tasteGame', _source, id, recipeKey, (item.metadata or {}).aged ~= nil)
 end)
 
----o[ The reading: the client says how well it read (0 - 1); the server decides what that learns ]o---
+---o[ The reading ]o---
 RegisterServerEvent('gsc_kassippu:server:tasteResult')
 AddEventHandler('gsc_kassippu:server:tasteResult', function(id, accuracy)
     local _source = source

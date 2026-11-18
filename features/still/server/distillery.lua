@@ -2,13 +2,13 @@ local Distillery = GSC.module('Distillery')
 
 ---oo[ The Fire ]oo---
 local BarrelFuelCount = {} -- [uid] = seconds of burn left
-local BarrelFirePower = {} -- [uid] = how hot it burns, 1.0 = ordinary wood
-local BarrelSoak = {}      -- [uid] = seconds of rain it has taken, while lit and in the open
-local BarrelExposure = {}  -- [uid] = { raining, covered, at } as last seen by a player at it
-local BarrelTarp = {}      -- [uid] = true once a tarp is rigged over it: never rained out
-local BarrelSmokeShown = {} -- [uid] = the smoke level (0..3) clients were last told about
-local BarrelFireOut = {}    -- [uid] = { at, warned }: when the fire went out (Cold stage grace, Config.Fuel.ColdGraceSeconds)
-local ColdGraceLeft         -- defined with the fire helpers below; the gauge sync reads it
+local BarrelFirePower = {}
+local BarrelSoak = {}
+local BarrelExposure = {}
+local BarrelTarp = {}
+local BarrelSmokeShown = {}
+local BarrelFireOut = {}
+local ColdGraceLeft
 
 local DressingOf
 local BarrelHeat = {}
@@ -17,42 +17,42 @@ local BarrelLoaded = {}
 local BarrelGracePeriodDone = {}
 local BarrelQualityTrack = {}
 local BarrelTargetQuality = {}
-local BarrelOwner = {}   -- [uid] = owner id string (see OwnerIdOf), never a player source
+local BarrelOwner = {}
 local BarrelBrewProgress = {}
 local BarrelRemainingBottles = {}
 local BarrelPositions = {}
-local BarrelHeadings = {} -- [uid] = heading the barrel was set down at, so it is drawn the same way after a restart
+local BarrelHeadings = {}
 local BarrelUsageCount = {} -- Persistent during server session
 
 ---o[ Timed stages ]o---
-local BarrelStageDeadline = {} -- [uid] = os.time() the current timed stage ends
+local BarrelStageDeadline = {}
 
 ---oo[ The Graded Final Push ]oo---
-local BarrelPushStart = {}     -- [uid] = os.time() the graded run began
-local BarrelScoreSum = {}      -- [uid] = running total of per-tick marks
-local BarrelScoreTicks = {}    -- [uid] = how many marks are in that total
-local BarrelTargetHeat = {}    -- [uid] = the line the player is chasing, this tick
-local BarrelNextEvent = {}     -- [uid] = os.time() of the next flare/draught
+local BarrelPushStart = {}
+local BarrelScoreSum = {}
+local BarrelScoreTicks = {}
+local BarrelTargetHeat = {}
+local BarrelNextEvent = {}
 local BarrelPressure = {}      -- [uid] = 0..Config.Pressure.Max
-local BarrelPressureWarned = {} -- [uid] = true while above WarnAt, so it warns once
+local BarrelPressureWarned = {}
 
 ---oo[ Fermentation ]oo---
 local BarrelFerment = {}
-local FermentState -- defined with the fermentation helpers below; the gauge sync reads it
+local FermentState
 
 ---oo[ The Batch ]oo---
 local BarrelMix = {}
 
 ---oo[ Stirring and the Cuts ]oo---
-local BarrelStirPending = {} -- [uid] = server ID of the player who has to stir it
-local BarrelStirSentAt = {}  -- [uid] = GetGameTimer() the stir game was sent (anti-cheat floor)
-local BarrelStirTries = {}   -- [uid] = stir games sent this batch (Config.Mixing.Stir.Tries)
-local BarrelTendPending = {} -- [uid] = { src, at } - who is tending the fermenting wash, since os.time()
-local BarrelBottlePending = {} -- [uid] = { src, at, rounds } - who is pouring the batch into bottles (Config.Bottling)
-local PushGame = {} -- [uid] = { stokes = { { left, perSec } }, taps = { [src] = true }, stokeAt = { [src] = ms }, warn, pourAt }
-local TickPushGame -- one second of the push game, defined with its events below
+local BarrelStirPending = {}
+local BarrelStirSentAt = {}
+local BarrelStirTries = {}
+local BarrelTendPending = {}
+local BarrelBottlePending = {}
+local PushGame = {}
+local TickPushGame
 
----o[ Hold The Heat as a game (Config.HeatSkill.Game): its config, or nil when it is off ]o---
+---o[ Hold The Heat as a game ]o---
 local function PushGameOn()
     local game = Config.HeatSkill and Config.HeatSkill.Enabled and Config.HeatSkill.Game
     return (game and game.Enabled) and game or nil
@@ -66,15 +66,15 @@ local function PushState(uid)
     end
     return st
 end
-local BarrelsLoaded = false   -- true once the barrels came back from the database
-local LastBarrelRequest = {}  -- [src] = os.time() of their last full-sync request
-local BarrelCut = {}         -- [uid] = { headsEnd, tailsStart, keepFrom, keepTo, phase }
-local BarrelCondenser = {}   -- [uid] = % water in the condenser during the run (Config.Condenser)
-local BarrelCondenserHot = {} -- [uid] = true while it runs hot and vapour escapes
+local BarrelsLoaded = false
+local LastBarrelRequest = {}
+local BarrelCut = {}
+local BarrelCondenser = {}
+local BarrelCondenserHot = {}
 
 ---oo[ Trouble At The Still ]oo---
-local BarrelIncident = {}     -- [uid] = { key, started, deadline, fixer, fixStarted, retryAt }
-local BarrelIncidentNext = {} -- [uid] = os.time() the next roll may happen
+local BarrelIncident = {}
+local BarrelIncidentNext = {}
 
 local function ActiveIncident(uid)
     local incident = BarrelIncident[uid]
@@ -105,13 +105,27 @@ local function IncidentFactor(uid, field)
     local conf = ActiveIncident(uid)
     return conf and tonumber(conf[field]) or 1.0
 end
-local CutReading -- defined with the cut helpers below; the gauge sync reads it
+local CutReading
 
 ---oo[ Condition and Fouling ]oo---
 local BarrelCondition = {}       -- [uid] = 0..Config.BarrelCondition.Max
-local BarrelResidue = {}         -- [uid] = 0..ResidueMax, fouling from the last batch
-local BarrelConditionWarned = {} -- [uid] = true below WarnConditionAt, so it warns once
-local BarrelDoomed = {}          -- [uid] = true once worn through: no more bottles, she is coming apart
+local BarrelResidue = {}
+local BarrelConditionWarned = {}
+local BarrelDoomed = {}
+local BarrelRepairCount = {}
+
+---o[ How many more repairs / batches a still has in her ]o---
+local function RepairsLeft(uid)
+    local max = tonumber(Config.BarrelCondition.MaxRepairs) or 0
+    if max <= 0 then return nil end
+    return math.max(0, max - (BarrelRepairCount[uid] or 0))
+end
+
+local function BatchesLeft(uid)
+    local max = tonumber(Config.BarrelCondition.MaxBatches) or 0
+    if max <= 0 then return nil end
+    return math.max(0, max - (BarrelUsageCount[uid] or 0))
+end
 
 ---oo[ Upgrades ]oo---
 local BarrelUpgrades = {} -- [uid] = { [upgradeKey] = true }
@@ -169,7 +183,7 @@ end
 
 ---oo[ Heat Sync Subscriptions ]oo---
 local BarrelWatchers = {} -- [uid] = { [src] = true }
-local WatchedBarrel = {}  -- [src] = uid, so a player can be unsubscribed cheaply
+local WatchedBarrel = {}
 
 local function SetBarrelWatcher(src, uid)
     local previous = WatchedBarrel[src]
@@ -209,9 +223,11 @@ local function SyncBarrelHeat(uid, heat, progress, bottles)
         gauge.condition = BarrelCondition[uid] or Config.BarrelCondition.Max
         gauge.residue = BarrelResidue[uid] or 0.0
         gauge.conditionWarn = Config.BarrelCondition.WarnConditionAt
+        gauge.repairsLeft = RepairsLeft(uid)
     end
 
     local fitted = UpgradeKeys(uid)
+    gauge.fitted = fitted
     if #fitted > 0 then
         local names = {}
         for i, key in ipairs(fitted) do names[i] = UpgradeList()[key].label or key end
@@ -228,7 +244,7 @@ local function SyncBarrelHeat(uid, heat, progress, bottles)
         }
     end
 
-    ---o[ Hold The Heat: the water barrel, the rack's splits, the tap, the coming flare / draught ]o---
+    ---o[ Hold The Heat ]o---
     local game = PushGameOn()
     if game and BarrelStage[uid] == Shared.BarrelStage.FINAL_PUSH then
         local st = PushGame[uid] or {}
@@ -383,7 +399,7 @@ end)
 ---oo[ Helper Functions ]oo---
 
 ---o[ Persistence Models Loads & Auto-Seed from SQL File ]o---
-Citizen.CreateThread(function()
+CreateThread(function()
     while GetResourceState('oxmysql') ~= 'started' do Wait(100) end
 
     local sqlFile = LoadResourceFile(GetCurrentResourceName(), "database/schema.sql")
@@ -420,12 +436,11 @@ end)
 ---oo[ Barrel Load Function ]oo---
 function Distillery.LoadBarrelsFromDB()
     exports.oxmysql:execute('SELECT * FROM gsc_kassippu_barrels', {}, function(results, err)
-        ---o[ Failed: say so (oxmysql only calls back on an error with the last argument below). BarrelsLoaded
-        --     stays false, so nobody can set down a still the save could not count or keep ]o---
+        ---o[ Failed ]o---
         if err then
             return print("^1[Error]^7 Could not load stills from gsc_kassippu_barrels - no stills this session: " .. tostring(err))
         end
-        BarrelsLoaded = true -- from now on a client's own request is answered (requestBarrels)
+        BarrelsLoaded = true
         if results then
             local count = 0
             for _, v in ipairs(results) do
@@ -446,6 +461,7 @@ function Distillery.LoadBarrelsFromDB()
                             BarrelFuelCount[uid] = tonumber(fire.fuel) or 0
                             BarrelFirePower[uid] = tonumber(fire.power) or 1.0
                             BarrelTarp[uid] = fire.tarp == true or nil
+                            BarrelRepairCount[uid] = math.max(0, math.floor(tonumber(fire.repairs) or 0))
                         end
                     end
                     BarrelBrewProgress[uid] = tonumber(v.progress) or 0
@@ -511,12 +527,7 @@ function Distillery.LoadBarrelsFromDB()
     end, GetCurrentResourceName(), true)
 end
 
----oo[ The Barrel Stash (a vorp_inventory custom inventory keyed by the barrel uid) ]oo---
--- Read and wiped only through vorp_inventory's own exports (CHANGELOG baseline #12). Its custom-inventory
--- API only answers for a registered id, so each call registers first (registerInventory skips a known id).
--- deleteCustomInventory clears character_inventories AND the items_crafted / loadout rows behind them, plus
--- the cache. Both read from the DB, so a stash nobody opened since the restart counts right.
--- Checked against this server's vorp_inventory (services/inventoryApiService.lua, inventoryService.lua).
+---oo[ The Barrel Stash ]oo---
 local function RegisterStash(invId)
     exports.vorp_inventory:registerInventory({
         id = invId,
@@ -528,17 +539,17 @@ local function RegisterStash(invId)
     })
 end
 
----o[ Empty it for good. Own thread: the export waits on the DB, never the barrel loop ]o---
+---o[ Empty it for good ]o---
 local function ClearStash(invId, cb)
     CreateThread(function()
         RegisterStash(invId)
         exports.vorp_inventory:deleteCustomInventory(invId)
-        exports.vorp_inventory:removeInventory(invId) -- the registration too; the open handler makes it again
+        exports.vorp_inventory:removeInventory(invId)
         if cb then cb() end
     end)
 end
 
----o[ Stacks + weapons left in it (weapons count: clearing a stash deletes them too) ]o---
+---o[ Stacks + weapons left in it ]o---
 local function CountStash(invId, cb)
     CreateThread(function()
         RegisterStash(invId)
@@ -551,7 +562,7 @@ end
 ---o[ Barrel Info Save to Database Function ]o---
 local function SaveBarrelToDB(uid)
     local coords = BarrelPositions[uid]
-    if not coords or BarrelDoomed[uid] then return end -- a worn-through barrel is already deleted: never write her back
+    if not coords or BarrelDoomed[uid] then return end
 
     local cleanCoords = { x = Shared.Round(coords.x, 2), y = Shared.Round(coords.y, 2), z = Shared.Round(coords.z, 2) }
 
@@ -563,7 +574,7 @@ local function SaveBarrelToDB(uid)
         heat = tonumber(BarrelHeat[uid]) or 0.0,
         fuel = math.min(127, math.floor(tonumber(BarrelFuelCount[uid]) or 0)),
         fire = json.encode({ fuel = BarrelFuelCount[uid] or 0, power = BarrelFirePower[uid] or 1.0,
-            tarp = BarrelTarp[uid] == true }),
+            tarp = BarrelTarp[uid] == true, repairs = BarrelRepairCount[uid] or 0 }),
         progress = tonumber(BarrelBrewProgress[uid]) or 0,
         recipe = BarrelLoaded[uid] or "none",
         bottles = tonumber(BarrelRemainingBottles[uid]) or 0,
@@ -649,7 +660,7 @@ function Distillery.Save(uid)
     SaveBarrelToDB(uid)
 end
 
----o[ For the recipe book's preview: the stash must be registered before vorp will read it ]o---
+---o[ For the recipe book's preview ]o---
 function Distillery.RegisterStash(uid)
     RegisterStash(uid)
 end
@@ -758,7 +769,7 @@ local function CapTierByCondition(uid, tier)
         return tier, nil -- she was never the limiting factor
     end
 
-    return allowed, tier -- second return is what it WOULD have been
+    return allowed, tier
 end
 
 ---o[ Wipe a barrel's run state ]o---
@@ -791,7 +802,7 @@ local function FireLit(uid)
     return (BarrelFuelCount[uid] or 0) > 0
 end
 
----o[ How much smoke the fire puts up: 0 (out), 1 light, 2 rising, 3 heavy ]o---
+---o[ How much smoke the fire puts up ]o---
 local function SmokeLevelOf(uid)
     local fuel = BarrelFuelCount[uid] or 0
     if fuel <= 0 then return 0 end
@@ -822,10 +833,8 @@ DressingOf = function(uid)
     }
 end
 
----o[ Tell every client, whenever any of it changes ]o---
----o[ Dressing goes to everyone (anyone may stream the barrel in), so changes are batched:
---     a 10-bottle pour, a log and its smoke all leave as ONE update per barrel, 250 ms later ]o---
-local DressingDirty = {}  -- [uid] = true while a change waits to be sent
+---o[ Dressing goes to everyone, so changes are batched ]o---
+local DressingDirty = {}
 local dressingFlushPending = false
 
 local function FlushDressing()
@@ -833,7 +842,7 @@ local function FlushDressing()
     local dirty = DressingDirty
     DressingDirty = {}
     for uid in pairs(dirty) do
-        if BarrelPositions[uid] then -- gone in the meantime: BarrelCleanup already told everyone
+        if BarrelPositions[uid] then
             TriggerClientEvent('gsc_kassippu:client:barrelDressing', -1, uid, DressingOf(uid))
         end
     end
@@ -868,7 +877,7 @@ local function AddLog(uid, log)
 
     BarrelFirePower[uid] = ((fuel * power) + (log.burnSeconds * log.power)) / (fuel + log.burnSeconds)
     BarrelFuelCount[uid] = fuel + log.burnSeconds
-    BarrelFireOut[uid] = nil -- lit again: the cold grace (and its one warning) start over next time
+    BarrelFireOut[uid] = nil
 
     SyncFire(uid)
 end
@@ -883,14 +892,14 @@ local function PutOutFire(uid)
     end
 end
 
----o[ Cold stage, fire out: seconds of grace left (0 = cooling), or nil when it does not apply ]o---
+---o[ Cold stage, fire out ]o---
 ColdGraceLeft = function(uid, now)
     if BarrelStage[uid] ~= Shared.BarrelStage.IDLE or FireLit(uid) or (BarrelHeat[uid] or 0) <= 0 then
         return nil
     end
 
     local out = BarrelFireOut[uid]
-    if not out then -- out since before a restart (or never seen going out): a fresh grace
+    if not out then
         out = { at = now, warned = false }
         BarrelFireOut[uid] = out
     end
@@ -898,15 +907,15 @@ ColdGraceLeft = function(uid, now)
     return math.max(0, (Config.Fuel.ColdGraceSeconds or 0) - (now - out.at))
 end
 
----o[ The stages where [E] puts a log on (a fermenting wash is lit by LightUnderWash instead) ]o---
+---o[ The stages where [E] puts a log on ]o---
 local function TakesWood(stage)
     local S = Shared.BarrelStage
     return stage == S.IDLE or stage == S.MID_CLIMB or stage == S.HEAT_PAUSE or stage == S.FINAL_PUSH
 end
 
----o[ "Put more on": only where a log can go on, and only to those allowed to put it there ]o---
+---o[ "Put more on" ]o---
 local function NotifyFireOut(uid)
-    if not TakesWood(BarrelStage[uid] or Shared.BarrelStage.IDLE) then return end -- e.g. leftover logs burning out at FREEZE / BREWING
+    if not TakesWood(BarrelStage[uid] or Shared.BarrelStage.IDLE) then return end
 
     for src in pairs(BarrelWatchers[uid] or {}) do
         if GSC.BarrelCrew.Can(src, uid, "fuel") then
@@ -938,7 +947,7 @@ local function BurnFire(uid, now)
         BarrelSoak[uid] = nil
     end
 
-    ---o[ Hold The Heat as a game: the splits are the fuel, the fire box doesn't burn down ]o---
+    ---o[ Hold The Heat as a game ]o---
     local frozen = PushGameOn() ~= nil and BarrelStage[uid] == Shared.BarrelStage.FINAL_PUSH
     if not frozen then
         BarrelFuelCount[uid] = math.max(0, BarrelFuelCount[uid] - IncidentFactor(uid, "burnMultiplier"))
@@ -997,7 +1006,6 @@ local function MakeBottle(recipeKey, quality, strengthKey, tainted, profile)
 
     if tainted then
         metadata.tainted = true
-        -- untasted, the taint is a hidden flaw: tasting puts the smell and the label on it
         if not hide then
             metadata.description = (metadata.description or label) .. Config.Text.Cuts.TaintedDescription
             if Config.Cuts.TaintedLabel then
@@ -1006,7 +1014,7 @@ local function MakeBottle(recipeKey, quality, strengthKey, tainted, profile)
         end
     end
 
-    ---o[ What a taster will find: "score;notes;flaws" (flat, so bottles of one batch stack) ]o---
+    ---o[ What a taster will find ]o---
     if profile and GSC.Tasting and GSC.Tasting.Encode then
         metadata.profile = GSC.Tasting.Encode(profile)
     end
@@ -1025,7 +1033,7 @@ end
 local GIVE_STATES = { FRESH = true, RESTED = true, MELLOW = true, FINE = true, TURNED = true }
 
 local function IsGiveAdmin(src)
-    return GSC.Admin.Is(src, Config.GiveCommand) -- Config.Admin, or the command's own Ace / Groups; console always
+    return GSC.Admin.Is(src, Config.GiveCommand)
 end
 
 local function GiveReply(src, text)
@@ -1059,7 +1067,6 @@ if Config.GiveCommand and Config.GiveCommand.Enabled then
             return GiveReply(_source, string.format(T.GiveBadGrade, args[3], KeysOf(recipe.rewards)))
         end
 
-        -- strength: given, "-" or left out = the recipe's first (strongest)
         local strengthKey = args[4] and args[4] ~= "-" and args[4]:upper() or nil
         if strengthKey and not GSC.Mash.Strength(recipeKey, strengthKey) then
             return GiveReply(_source, string.format(T.GiveBadStrength, args[4], KeysOf(recipe.strengths, "key")))
@@ -1069,7 +1076,6 @@ if Config.GiveCommand and Config.GiveCommand.Enabled then
         local amount = math.floor(tonumber(args[5]) or 1)
         amount = math.max(1, math.min(Config.GiveCommand.MaxAmount or 20, amount))
 
-        -- the rest: a state (fresh / rested / mellow / fine / turned) and / or "tainted"
         local state, tainted = "FRESH", false
         for i = 6, #args do
             local word = args[i]:upper()
@@ -1089,7 +1095,7 @@ if Config.GiveCommand and Config.GiveCommand.Enabled then
         end
         exports.vorp_inventory:addItem(target, item, amount, metadata)
 
-        local shown = (metadata and metadata.label) or item -- no label: the item shows its database name
+        local shown = (metadata and metadata.label) or item
         GiveReply(_source, string.format(T.GiveDone, amount, shown, item, target))
         Shared.Debug(string.format("^6[Give]^7 %s gave %dx %s (%s %s %s %s%s) to %s", tostring(_source), amount, item,
             recipeKey, grade, tostring(strengthKey), state, tainted and " tainted" or "", target))
@@ -1183,9 +1189,7 @@ local function LightUnderWash(src, uid)
     return true
 end
 
----o[ A rival's spike (or a missed animal): it keeps that much less ]o---
--- byThief: count it toward Config.BarrelTheft.SpikeMaxPerBatch. A missed ANIMAL incident spikes too, but must
--- not use up the thieves' limit.
+---o[ A rival's spike ]o---
 function Distillery.SpikeWash(uid, seconds, byThief)
     local f = BarrelFerment[uid]
     if not f or BarrelStage[uid] ~= Shared.BarrelStage.FERMENTING then return false end
@@ -1202,8 +1206,7 @@ function Distillery.SpikeCount(uid)
     return f and tonumber(f.spikes) or 0
 end
 
----o[ The batch's hidden character, for tasting (Config.Tasting): what really happened, as keys ]o---
--- Flaws worst first, notes best first. The words for them are Config.Text.Tasting.Notes / Flaws.
+---o[ The batch's hidden character, for tasting ]o---
 local function BuildProfile(uid)
     local conf = Config.Tasting
     if not (conf and conf.Enabled) then return nil end
@@ -1307,7 +1310,7 @@ CutReading = function(uid)
     }
 end
 
----o[ A run begins: where the heads end and the tails start, this batch ]o---
+---o[ A run begins ]o---
 local function StartCutRun(uid)
     local conf = Config.Cuts
     local jitter = math.floor(conf.Jitter or 0)
@@ -1437,7 +1440,7 @@ local function UseWater(src, uses)
     local conf = Config.WaterBucket
     local full = conf.Uses or 1
 
-    for _ = 1, 20 do -- a guard: every pass takes uses or empties a bucket
+    for _ = 1, 20 do
         if uses <= 0 then break end
         local bucket = Buckets(src)[1]
         if not bucket then return false end
@@ -1467,19 +1470,18 @@ function Distillery.UseWater(src, uses)
     return UseWater(src, uses)
 end
 
----o[ For GSC.Stations: how many uses of water the satchel's buckets hold (nothing is taken) ]o---
+---o[ For GSC.Stations ]o---
 function Distillery.WaterUsesLeft(src)
     return WaterUsesLeft(src)
 end
 
----oo[ Where the still's logs and water come from: its Log Rack / Water Barrel, or the satchel ]oo---
--- Config.Stations.StillUsesStock. The satchel then only stocks the two (Fill Water Barrel, Stack Logs).
+---oo[ Where the still's logs and water come from ]oo---
 local function FromStock()
     local conf = Config.Stations
     return conf ~= nil and conf.Enabled == true and conf.StillUsesStock == true
 end
 
----o[ One log of `kind` for this still: checked (take = false) or taken; the player is told when there is none ]o---
+---o[ One log of `kind` for this still ]o---
 local function StillLog(src, uid, kind, take)
     local log = Config.Fuel.Logs[kind]
     if not log then return false end
@@ -1509,7 +1511,7 @@ local function StillLog(src, uid, kind, take)
     return true
 end
 
----o[ `uses` of water for this still (a use = Stations.WaterBarrel.PerUse litres); false and told why if short ]o---
+---o[ `uses` of water for this still ]o---
 local function StillWater(src, uid, uses, failText)
     uses = uses or 1
 
@@ -1591,7 +1593,7 @@ local function MissIncident(uid, conf)
     Shared.Debug(string.format("^1[Incident]^7 %s at %s went unanswered", conf.key, uid))
 end
 
----o[ One second of it: what is going wrong keeps going wrong, or something new does ]o---
+---o[ One second of it ]o---
 local function TickIncidents(uid, stage, now)
     local conf = Config.Incidents
     if not conf or not conf.Enabled then return end
@@ -1669,11 +1671,11 @@ local function TickCutRun(uid)
     if progress >= 100.0 then FinishCutRun(uid) end
 end
 
----oo[ A client asks for every barrel itself (its scripts started after the server's load broadcast) ]oo---
+---oo[ A client asks for every barrel itself ]oo---
 RegisterServerEvent('gsc_kassippu:server:requestBarrels')
 AddEventHandler('gsc_kassippu:server:requestBarrels', function()
     local _source = source
-    if not BarrelsLoaded then return end -- the load broadcast is still to come, and will reach it
+    if not BarrelsLoaded then return end
     local now = os.time()
     if LastBarrelRequest[_source] and now - LastBarrelRequest[_source] < 15 then return end
     LastBarrelRequest[_source] = now
@@ -1684,7 +1686,7 @@ AddEventHandler('playerDropped', function()
     LastBarrelRequest[source] = nil
 end)
 
----oo[ Brew state survives a restart: heat, fuel, pressure and progress change every second ]oo---
+---oo[ Brew state survives a restart ]oo---
 local function Working(uid)
     local stage = BarrelStage[uid] or Shared.BarrelStage.IDLE
     return FireLit(uid) or (stage ~= Shared.BarrelStage.IDLE and stage ~= Shared.BarrelStage.COMPLETED)
@@ -1706,16 +1708,15 @@ AddEventHandler('onResourceStop', function(resourceName)
     for uid in pairs(BarrelPositions) do SaveBarrelToDB(uid) end -- oxmysql is still up during a restart
 end)
 
----oo[ Database To Character Sync On Character Selection]oo---=
+---oo[ Database To Character Sync On Character Selection ]oo---
 AddEventHandler("vorp:SelectedCharacter", function(source, character)
     local _source = source
 
-    Citizen.SetTimeout(4000, function()
+    SetTimeout(4000, function()
         TriggerClientEvent('gsc_kassippu:client:syncAllBarrels', _source, BarrelSyncList(), BarrelStage)
     end)
 end)
 
----oo[ Register Barrel item As a Usable ]oo---
 ---oo[ Rigging A Tarp Over A Still ]oo---
 local function TarpOn()
     return Config.Fuel.Rain and Config.Fuel.Rain.TarpEnabled
@@ -1758,12 +1759,39 @@ exports.vorp_inventory:registerUsableItem(Config.Items.StillTarp, function(data)
 end)
 
 ---oo[ Fitting An Upgrade ]oo---
+local function FitUpgrade(src, uid, key)
+    local up = UpgradeList()[key]
+    if not up or not up.item or BarrelDoomed[uid] then return end
+    local label = up.label or key
+
+    if not Shared.UpgradeUsable(up) then
+        return GSC.Notify.Send(src, string.format(Config.Text.UpgradeNotUsed, label), 4000)
+    end
+
+    if BarrelUpgrades[uid] and BarrelUpgrades[uid][key] then
+        return GSC.Notify.Send(src, string.format(Config.Text.UpgradeAlready, label), 3000)
+    end
+
+    if exports.vorp_inventory:getItemCount(src, nil, up.item) < 1
+        or not exports.vorp_inventory:subItem(src, up.item, 1) then -- not taken: not fitted
+        return GSC.Notify.Send(src, string.format(Config.Text.UpgradeNoItem, label), 4000)
+    end
+
+    BarrelUpgrades[uid] = BarrelUpgrades[uid] or {}
+    BarrelUpgrades[uid][key] = true
+    SaveBarrelToDB(uid)
+    SyncBarrelHeat(uid, BarrelHeat[uid] or 0.0, BarrelBrewProgress[uid] or 0, BarrelRemainingBottles[uid] or 0)
+
+    Shared.Debug(string.format("^2[Upgrade]^7 (ID: %s) fitted %s to %s", src, key, uid))
+    GSC.Notify.Send(src, string.format(Config.Text.UpgradeFitted, label), 5000)
+    TriggerClientEvent('gsc_kassippu:client:barrelAnim', src, "upgrade")
+end
+
 for key, up in pairs(UpgradeList()) do
     if up.item then
         exports.vorp_inventory:registerUsableItem(up.item, function(data)
             local _source = data.source
             if not Shared.GetChar(_source) then return end
-            local label = up.label or key
 
             local uid = WatchedBarrel[_source]
             if not uid or not BarrelPositions[uid] then
@@ -1772,19 +1800,8 @@ for key, up in pairs(UpgradeList()) do
 
             if not GSC.BarrelCrew.Allow(_source, uid, "repair") then return end
 
-            if BarrelUpgrades[uid] and BarrelUpgrades[uid][key] then
-                return GSC.Notify.Send(_source, string.format(Config.Text.UpgradeAlready, label), 3000)
-            end
-
             exports.vorp_inventory:closeInventory(_source)
-            if not exports.vorp_inventory:subItem(_source, up.item, 1) then return end -- not taken: not fitted
-
-            BarrelUpgrades[uid] = BarrelUpgrades[uid] or {}
-            BarrelUpgrades[uid][key] = true
-            SaveBarrelToDB(uid)
-
-            GSC.Notify.Send(_source, string.format(Config.Text.UpgradeFitted, label), 5000)
-            TriggerClientEvent('gsc_kassippu:client:barrelAnim', _source, "upgrade")
+            FitUpgrade(_source, uid, key)
         end)
     end
 end
@@ -1816,7 +1833,7 @@ local PendingKit = {} -- [src] = { id, meta }
 local function AtBarrelLimit(src, Character)
     local limit = tonumber(Config.KasiyaBarrelKitConf.MaxPerPlayer) or 0
     if limit <= 0 then return false end
-    if not BarrelsLoaded then return true end -- the saved barrels aren't counted yet: wait for them
+    if not BarrelsLoaded then return true end
 
     local ownerId, identifier, owned = OwnerIdOf(Character), Character.identifier, 0
     for _, owner in pairs(BarrelOwner) do
@@ -1865,7 +1882,7 @@ AddEventHandler('gsc_kassippu:server:saveBarrel', function(_, coords, heading)
         return
     end
 
-    if AtBarrelLimit(_source, Character) then return end -- checked again: the kit's check was before placing
+    if AtBarrelLimit(_source, Character) then return end
 
     ---o[ Room for the barrel and its fire ]o---
     for _, other in pairs(BarrelPositions) do
@@ -1904,6 +1921,7 @@ AddEventHandler('gsc_kassippu:server:saveBarrel', function(_, coords, heading)
         BarrelCondition[uid] = math.max(0.0, math.min(max, tonumber(meta.condition) or max))
         BarrelResidue[uid] = math.max(0.0, tonumber(meta.residue) or 0.0)
         BarrelUsageCount[uid] = math.max(0, math.floor(tonumber(meta.usage) or 0))
+        BarrelRepairCount[uid] = math.max(0, math.floor(tonumber(meta.repairs) or 0))
         BarrelTarp[uid] = meta.tarp == true or nil
         SetUpgrades(uid, meta.upgrades)
     end
@@ -1950,7 +1968,6 @@ AddEventHandler('gsc_kassippu:server:addOneWood', function(uid, kind)
     ---o[ The fire under a fermenting wash ends the ferment ]o---
     if stage == Shared.BarrelStage.FERMENTING then
         if LightUnderWash(_source, uid) then
-            -- the log was checked just above; if it is gone now the wash is lit with no wood under it
             if StillLog(_source, uid, kind or "wood", true) then AddLog(uid, log) end
             SaveBarrelToDB(uid)
             TriggerClientEvent('gsc_kassippu:client:barrelAnim', _source, "wood")
@@ -1986,15 +2003,13 @@ AddEventHandler('gsc_kassippu:server:addOneWood', function(uid, kind)
 end)
 
 ---oo[ Hold The Heat - the game (Config.HeatSkill.Game) ]oo---
--- [E] stoke: a split off the Log Rack, its heat arriving over StokeSeconds. [R] hold: the Water Barrel's tap.
--- The server moves the heat every second; the client only says "stoke" and "tap open / shut".
 
 local function AtStillToo(src, uid)
     return #(GetEntityCoords(GetPlayerPed(src)) - BarrelPositions[uid])
         <= (Config.KasiyaBarrelKitConf.KasiyaBarrelDistance + 5.0)
 end
 
----o[ One second of the push: the fire sags, stokes land, the tap cools ]o---
+---o[ One second of the push ]o---
 TickPushGame = function(uid, heat, lit, game)
     local st = PushState(uid)
 
@@ -2038,7 +2053,7 @@ local function PushReady(src, uid, right)
     return GSC.BarrelCrew.Allow(src, uid, right)
 end
 
----o[ No split on the rack: a whole log from the satchel, in the rack's burn order ]o---
+---o[ No split on the rack ]o---
 local function SatchelLog(src)
     if FromStock() then return nil end -- the rack is the only wood
     local order = ((Config.Stations or {}).LogRack or {}).BurnOrder or {}
@@ -2119,7 +2134,7 @@ AddEventHandler('gsc_kassippu:server:pushTap', function(uid, open)
         return
     end
 
-    ---o[ No water barrel: one pour from a bucket (the old way), at most one a second ]o---
+    ---o[ No water barrel ]o---
     if FromStock() then
         return GSC.Notify.Send(_source, (Config.Text.Stations or {}).NeedWater, 4000)
     end
@@ -2147,8 +2162,7 @@ AddEventHandler('gsc_kassippu:server:addWater', function(uid)
         return
     end
 
-    ---o[ Only where the still offers water: the heat stages, or the condenser during the run.
-    --     Anywhere else a pour would drop her under 36 and wipe a mix or a finished batch ]o---
+    ---o[ Only where the still offers water ]o---
     local waterStage = BarrelStage[uid]
     if not (waterStage == Shared.BarrelStage.HEAT_PAUSE or waterStage == Shared.BarrelStage.FINAL_PUSH
         or (waterStage == Shared.BarrelStage.BREWING and Config.Condenser.Enabled)) then
@@ -2174,7 +2188,7 @@ AddEventHandler('gsc_kassippu:server:addWater', function(uid)
     local barrelCoords = BarrelPositions[uid]
 
     if #(playerCoords - barrelCoords) <= (Config.KasiyaBarrelKitConf.KasiyaBarrelDistance + 5.0) then
-        local count = FromStock() and 1 or WaterUsesLeft(_source) -- the water barrel is checked as it is used
+        local count = FromStock() and 1 or WaterUsesLeft(_source)
 
         if count >= 1 then
             if not BarrelHeat[uid] then BarrelHeat[uid] = 0.0 end
@@ -2183,7 +2197,6 @@ AddEventHandler('gsc_kassippu:server:addWater', function(uid)
             if currentHeat > 0 and not StillWater(_source, uid, 1) then
                 return
             elseif currentHeat > 0 then
-
                 local reduction = Config.CoolingSystem.HeatReductionValue
                 BarrelHeat[uid] = math.max(0.0, currentHeat - reduction)
 
@@ -2309,6 +2322,65 @@ AddEventHandler('gsc_kassippu:server:scrubBarrel', function(uid)
     SyncBarrelHeat(uid, BarrelHeat[uid] or 0.0, BarrelBrewProgress[uid] or 0, BarrelRemainingBottles[uid] or 0)
 end)
 
+---oo[ The Barrel Repair Kit (several uses, like the water bucket) ]oo---
+
+local function RepairKitFull()
+    return math.max(1, math.floor(tonumber(Config.BarrelCondition.RepairKitUses) or 1))
+end
+
+---o[ Uses left in one kit: no metadata yet = a new kit ]o---
+local function RepairKitUses(item)
+    local full = RepairKitFull()
+    local left = tonumber(item.metadata and item.metadata.repairUsesLeft) or full
+    return math.max(0, math.min(full, math.floor(left)))
+end
+
+---o[ The player's kits, the most worn first ]o---
+local function RepairKits(src)
+    local name = Config.BarrelCondition.RepairItem
+    local list = {}
+    for _, item in ipairs(exports.vorp_inventory:getUserInventoryItems(src) or {}) do
+        if item.name == name and (tonumber(item.count) or 0) > 0 then list[#list + 1] = item end
+    end
+    table.sort(list, function(a, b) return RepairKitUses(a) < RepairKitUses(b) end)
+    return list
+end
+
+local function RepairUsesLeft(src)
+    local total = 0
+    for _, item in ipairs(RepairKits(src)) do total = total + RepairKitUses(item) * item.count end
+    return total
+end
+
+---o[ Take `uses` from the player's kits ]o---
+local function UseRepairKit(src, uses)
+    if RepairUsesLeft(src) < uses then return false end
+
+    local full = RepairKitFull()
+    for _ = 1, 20 do
+        if uses <= 0 then break end
+        local kit = RepairKits(src)[1]
+        if not kit then return false end
+
+        local left = RepairKitUses(kit)
+        local take = math.min(left, uses)
+        uses = uses - take
+        left = left - take
+
+        if left <= 0 then
+            if not exports.vorp_inventory:subItemById(src, kit.id, nil, nil, 1) then return false end
+            GSC.Notify.Send(src, Config.Text.RepairKitUsedUp, 3000)
+        else
+            local meta = {}
+            for k, v in pairs(kit.metadata or {}) do meta[k] = v end
+            meta.repairUsesLeft = left
+            meta.description = string.format(Config.Text.RepairKitDescription, left, full)
+            exports.vorp_inventory:setItemMetadata(src, kit.id, meta, 1) -- one kit off the stack
+        end
+    end
+    return true
+end
+
 ---o[ Mend the staves ]o---
 RegisterServerEvent('gsc_kassippu:server:repairBarrel')
 AddEventHandler('gsc_kassippu:server:repairBarrel', function(uid)
@@ -2318,21 +2390,35 @@ AddEventHandler('gsc_kassippu:server:repairBarrel', function(uid)
 
     local conf = Config.BarrelCondition
 
+    if BarrelDoomed[uid] then return end
+
+    ---o[ Lifetime cap: checked before the kit is taken ]o---
+    if RepairsLeft(uid) == 0 then
+        return GSC.Notify.Send(_source, Config.Text.RepairLimitReached, 4000)
+    end
+
     if GetCondition(uid) >= conf.Max then
         return GSC.Notify.Send(_source, Config.Text.RepairNotNeeded, 3000)
     end
 
-    if exports.vorp_inventory:getItemCount(_source, nil, conf.RepairItem) < conf.RepairAmount
-        or not exports.vorp_inventory:subItem(_source, conf.RepairItem, conf.RepairAmount) then
+    if not UseRepairKit(_source, math.max(1, math.floor(tonumber(conf.RepairCost) or 1))) then
         return GSC.Notify.Send(_source, Config.Text.RepairNoItem, 4000)
     end
     BarrelCondition[uid] = math.min(conf.Max, GetCondition(uid) + conf.RepairRestores)
     BarrelConditionWarned[uid] = nil
+    BarrelRepairCount[uid] = (BarrelRepairCount[uid] or 0) + 1
 
-    Shared.Debug(string.format("^2[Repair]^7 (ID: %s) %s mended %s: condition %.0f",
-        _source, Character.firstname, uid, GetCondition(uid)))
+    Shared.Debug(string.format("^2[Repair]^7 (ID: %s) %s mended %s: condition %.0f, repair %d",
+        _source, Character.firstname, uid, GetCondition(uid), BarrelRepairCount[uid]))
 
-    GSC.Notify.Send(_source, Config.Text.RepairDone .. math.floor(GetCondition(uid)) .. "%", 3000)
+    local msg = Config.Text.RepairDone .. math.floor(GetCondition(uid)) .. "%"
+    local repairsLeft, batchesLeft = RepairsLeft(uid), BatchesLeft(uid)
+    if repairsLeft then
+        msg = msg .. (repairsLeft > 0 and string.format(Config.Text.RepairsLeft, repairsLeft)
+            or Config.Text.RepairLastOne)
+    end
+    if batchesLeft then msg = msg .. string.format(Config.Text.BatchesLeft, batchesLeft) end
+    GSC.Notify.Send(_source, msg, 5000)
     TriggerClientEvent('gsc_kassippu:client:barrelAnim', _source, "repair")
 
     SaveBarrelToDB(uid)
@@ -2391,7 +2477,7 @@ AddEventHandler('gsc_kassippu:server:startMixing', function(uid, recipeKey, clim
         fermentSheltered = climate.sheltered == true
     end
 
-    ---o[Check Barrel UID Exists On Database ]o---
+    ---o[ Check Barrel UID Exists On Database ]o---
     if not BarrelPositions[uid] then
         Shared.Debug("^1[Error]^7 UID " .. tostring(uid) .. " not found in BarrelPositions for Mixing.")
         return
@@ -2422,7 +2508,7 @@ AddEventHandler('gsc_kassippu:server:startMixing', function(uid, recipeKey, clim
         return GSC.Notify.Send(_source, Config.Text.RecipeUnknown, 4000)
     end
 
-    ---o[ Read the barrel (registered first: after a restart vorp only answers for a known id) ]o---
+    ---o[ Read the barrel ]o---
     RegisterStash(invId)
     exports.vorp_inventory:getCustomInventoryItems(invId, function(storedItems)
         if BarrelStage[uid] ~= Shared.BarrelStage.FREEZE then return end
@@ -2455,7 +2541,7 @@ AddEventHandler('gsc_kassippu:server:startMixing', function(uid, recipeKey, clim
             strength = mash.strength,
             inheritedTaint = mash.tainted or nil,
             scoreMod = mash.scoreMod,
-            fruit = mash.fruit,  -- for the tasting profile, built when the batch is done
+            fruit = mash.fruit,
             stale = mash.stale,
         }
 
@@ -2515,7 +2601,7 @@ AddEventHandler('gsc_kassippu:server:stirResult', function(uid, passed)
         passed = false
     end
 
-    ---o[ A failed stir gets another go while tries are left (the same player, still at the still) ]o---
+    ---o[ A failed stir gets another go while tries are left ]o---
     local tries = BarrelStirTries[uid] or 1
     if passed ~= true and tries < (tonumber(stir.Tries) or 1) then
         local delay = tonumber(stir.RetryDelay) or 3
@@ -2549,7 +2635,7 @@ AddEventHandler('gsc_kassippu:server:stirResult', function(uid, passed)
     SaveBarrelToDB(uid)
 end)
 
----oo[ Tending The Fermenting Wash (the pot minigame, once per batch) ]oo---
+---oo[ Tending The Fermenting Wash ]oo---
 local function TendConf()
     local f = Config.Fermentation
     return f and f.Enabled and f.Tend and f.Tend.Enabled and f.Tend or nil
@@ -2726,8 +2812,6 @@ AddEventHandler('gsc_kassippu:server:incidentResult', function(uid, key, passed)
 end)
 
 ---oo[ Barrel Explosion Event ]oo---
--- Server-only: fired by the heat/pressure tick with TriggerEvent. Deliberately NOT a net event,
--- or any client could blow up (and delete) any still.
 AddEventHandler('gsc_kassippu:server:explodeBarrel', function(uid, cause)
     ---o[ Get Barrel Position Using Database ]o---
     local barrelCoords = BarrelPositions[uid]
@@ -2766,12 +2850,13 @@ AddEventHandler('gsc_kassippu:server:explodeBarrel', function(uid, cause)
         BarrelResidue[uid]          = nil
         BarrelConditionWarned[uid]  = nil
         BarrelUsageCount[uid]       = nil
+        BarrelRepairCount[uid]      = nil
         BarrelUpgrades[uid]         = nil
         BarrelDoomed[uid]           = nil
         ClearRunState(uid)
-        GSC.Stations.Explode(uid) -- her water barrel and log rack go up with her
+        GSC.Stations.Explode(uid)
 
-        ---o[ And take her off the books - and what was stored in her went up too ]o---
+        ---o[ And take her off the books ]o---
         exports.oxmysql:execute('DELETE FROM gsc_kassippu_barrels WHERE uid = ?', { uid })
         ClearStash(uid)
 
@@ -2787,8 +2872,8 @@ AddEventHandler('gsc_kassippu:server:explodeBarrel', function(uid, cause)
     end
 end)
 
----oo[ Heat Management System ( Loop )]oo---
-Citizen.CreateThread(function()
+---oo[ Heat Management System ( Loop ) ]oo---
+CreateThread(function()
     while true do
         if next(BarrelStage) == nil then
             Wait(5000)
@@ -2852,12 +2937,12 @@ Citizen.CreateThread(function()
 
                 ---o[ Stage IDLE: warming her up ]o---
                 if stage == Shared.BarrelStage.IDLE and not lit then
-                    ---o[ Fire out while she warms: hold the heat for the grace, then cool slowly ]o---
+                    ---o[ Fire out while she warms ]o---
                     local graceLeft = ColdGraceLeft(barrelId, currentTime)
                     if graceLeft == 0 then
                         local out = BarrelFireOut[barrelId]
                         if out and not out.warned then
-                            out.warned = true -- once per burn-out: the owner and crew too, wherever they are
+                            out.warned = true
                             NotifyBarrel(barrelId, Config.Text.ColdCooling, 6000)
                         end
                         BarrelHeat[barrelId] = math.max(0.0, heat - (Config.Fuel.ColdCoolRate or Config.Fuel.CoolDownRate or 1.0))
@@ -2916,7 +3001,7 @@ Citizen.CreateThread(function()
                         end
                     end
 
-                    ---o[ Stage FINAL_PUSH ( Tracking Qualities )]o---
+                    ---o[ Stage FINAL_PUSH ( Tracking Qualities ) ]o---
                 elseif stage == Shared.BarrelStage.FINAL_PUSH then
                     local game = PushGameOn()
                     if game then
@@ -2984,7 +3069,6 @@ Citizen.CreateThread(function()
                             end
                         end
 
-                        ---o[ Flare-ups and draughts ]o---
                         ---o[ The game warns WarnSeconds ahead, so a good hand gets ready for it ]o---
                         local pushGame = PushGameOn()
                         local warnAhead = pushGame and (tonumber(pushGame.WarnSeconds) or 0) or 0
@@ -3194,6 +3278,7 @@ local function RemoveBarrel(uid)
     TriggerClientEvent('gsc_kassippu:client:BarrelCleanup', -1, uid, coords)
 
     BarrelUsageCount[uid] = nil
+    BarrelRepairCount[uid] = nil
     BarrelStage[uid] = nil
     BarrelHeat[uid] = nil
     BarrelFuelCount[uid] = nil
@@ -3240,7 +3325,7 @@ local function GiveSpentMash(_source, uid, recipeKey)
     GSC.Notify.Send(_source, string.format(Config.Text.SpentMashGot, amount), 4000)
 end
 
----o[ How many bottles a finished batch holds: worked out the first time anyone draws from it ]o---
+---o[ How many bottles a finished batch holds ]o---
 local function EnsureRemaining(uid, recipeKey)
     if BarrelRemainingBottles[uid] == nil or BarrelRemainingBottles[uid] <= 0 then
         local quality = BarrelTargetQuality[uid] or Config.Recipes[recipeKey].rewards.NORMAL.quality
@@ -3257,7 +3342,6 @@ local function EnsureRemaining(uid, recipeKey)
 end
 
 ---oo[ Draw One Bottle Off A Finished Batch ]oo---
--- spill = the pour went wrong (Config.Bottling): the spirit is lost from the batch, the empty is kept
 local function DrawBottle(_source, uid, quiet, spill)
     local Character = Shared.GetChar(_source)
 
@@ -3293,7 +3377,6 @@ local function DrawBottle(_source, uid, quiet, spill)
 
     if spill or hasBottle >= 1 then
         if not spill then
-            -- no empty taken: no full bottle, and the batch keeps it
             if not exports.vorp_inventory:subItem(_source, emptyItem, 1) then
                 GSC.Notify.Send(_source, Config.Text.RequiredFillingItem .. Character.firstname, 4000)
                 return false
@@ -3329,18 +3412,23 @@ local function DrawBottle(_source, uid, quiet, spill)
                     uid, GetCondition(uid), GetResidue(uid)))
             end
 
-            local spent = Config.BarrelCondition.Enabled
-                and worn
-                or (not Config.BarrelCondition.Enabled
-                    and BarrelUsageCount[uid] >= Config.KasiyaBarrelKitConf.BarrelUsageTime)
+            ---o[ Lifetime cap ]o---
+            local outOfBatches = Config.BarrelCondition.Enabled and BatchesLeft(uid) == 0
+
+            local spent
+            if Config.BarrelCondition.Enabled then
+                spent = worn or outOfBatches
+            else
+                spent = BarrelUsageCount[uid] >= Config.KasiyaBarrelKitConf.BarrelUsageTime
+            end
 
             if spent then
                 BarrelDoomed[uid] = true
-                -- off the books now, not in BarrelDestroyingTime: a restart in between would load her back
-                -- as COMPLETED with 0 bottles, and EnsureRemaining would refill the whole batch
                 exports.oxmysql:execute('DELETE FROM gsc_kassippu_barrels WHERE uid = ?', { uid })
                 if worn then
                     GSC.Notify.Send(_source, Config.Text.ConditionCollapsed, 8000)
+                elseif outOfBatches then
+                    GSC.Notify.Send(_source, Config.Text.BatchLimitReached, 8000)
                 end
                 GSC.Notify.Send(_source, Config.Text.BarrelDetroyWarning, 10000)
 
@@ -3390,7 +3478,7 @@ local function DrawBottle(_source, uid, quiet, spill)
     return false
 end
 
----o[ Bottle all: one hold draws every bottle there are empties for ]o---
+---o[ Bottle all ]o---
 local function BottleAll(_source, uid)
     local drawn, label = 0, nil
     local emptyItem = Config.Product.FillingItem
@@ -3412,9 +3500,7 @@ local function BottleAll(_source, uid)
     return true
 end
 
-
 ---oo[ Bottling: the pour-and-cork minigame (Config.Bottling) ]oo---
--- The game can only cost bottles, never add them: a forged "all clean" is just the old one-hold bottling.
 
 local function BottlingConf()
     local b = Config.Bottling
@@ -3427,7 +3513,7 @@ local function BottleWindow(conf, rounds)
     return (rounds or 1) * ((m.bottleTime or 7) + (m.corkTime or 3) + 2) + 10
 end
 
----o[ Bottles lost: every spill poured by hand, and the rest follow at RestFactor of that rate (capped) ]o---
+---o[ Bottles lost ]o---
 function Distillery.BottlingSpills(drawable, rounds, handSpills, conf)
     conf = conf or Config.Bottling or {}
     rounds = math.min(rounds, drawable)
@@ -3440,7 +3526,7 @@ function Distillery.BottlingSpills(drawable, rounds, handSpills, conf)
     return math.max(handSpills, math.min(handSpills + restSpills, cap))
 end
 
----o[ The outcomes the game reports: one "clean" or "spill" per bottle poured. nil = not a real result ]o---
+---o[ The outcomes the game reports ]o---
 local function CountSpills(outcomes, rounds)
     if type(outcomes) ~= 'table' or #outcomes ~= rounds then return nil end
     local spills = 0
@@ -3534,7 +3620,7 @@ AddEventHandler('gsc_kassippu:server:bottleResult', function(uid, outcomes)
     ---o[ Sooner than bottles can be poured: every one went over ]o---
     if took < pending.rounds * (conf.MinPerBottle or 1.5) then handSpills = pending.rounds end
 
-    ---o[ What is left to draw now (a thief, or an empty dropped, while the game ran) ]o---
+    ---o[ What is left to draw now ]o---
     local remaining = BarrelRemainingBottles[uid] or 0
     local empties = tonumber(exports.vorp_inventory:getItemCount(_source, nil, Config.Product.FillingItem)) or 0
     local drawable = math.min(remaining, Config.Product.BottleAll and empties or math.min(empties, 1))
@@ -3568,11 +3654,11 @@ AddEventHandler('gsc_kassippu:server:collectProduct', function(uid)
 
     if not GSC.BarrelCrew.Allow(_source, uid, "bottle") then return end
 
-    ---o[ The pour minigame decides it (bottleResult); without it, the old one-hold bottling ]o---
+    ---o[ The pour minigame decides it ]o---
     local bottling = BottlingConf()
     if bottling then return OpenBottling(_source, uid, bottling) end
 
-    if not AtStill(_source, uid) then return end -- the one-hold bottling is only at the still too
+    if not AtStill(_source, uid) then return end
 
     local bottled
     if Config.Product.BottleAll then
@@ -3631,6 +3717,7 @@ local function KitMetadata(uid)
         condition = condition,
         residue = GetResidue(uid),
         usage = BarrelUsageCount[uid] or 0,
+        repairs = BarrelRepairCount[uid] or 0,
         upgrades = keys,
         tarp = BarrelTarp[uid] == true or nil,
     }
@@ -3662,7 +3749,7 @@ AddEventHandler('gsc_kassippu:server:pickupBarrel', function(uid)
             if not PickupReady(uid) then return end
 
             local meta = KitMetadata(uid)
-            GSC.Stations.ReturnAll(_source, uid) -- the water barrel and log rack (and its logs) come back too
+            GSC.Stations.ReturnAll(_source, uid)
             RemoveBarrel(uid)
             exports.vorp_inventory:addItem(_source, kit, 1, meta)
             GSC.Notify.Send(_source, Config.Text.PickupDone, 4000)
@@ -3670,6 +3757,20 @@ AddEventHandler('gsc_kassippu:server:pickupBarrel', function(uid)
             Shared.Debug(string.format("^3[Pickup]^7 (ID: %s) %s packed up %s at %.0f%%",
                 _source, Character.firstname, uid, meta.condition))
         end)
+end)
+
+---oo[ The Fittings Slip: fit an upgrade from the book ]oo---
+RegisterServerEvent('gsc_kassippu:server:fitUpgrade')
+AddEventHandler('gsc_kassippu:server:fitUpgrade', function(uid, key)
+    local _source = source
+    if type(uid) ~= 'string' or type(key) ~= 'string' then return end
+    if not Shared.GetChar(_source) or not BarrelPositions[uid] then return end
+    if not AtBarrel(_source, uid) then
+        return GSC.Notify.Send(_source, Config.Text.UpgradeNotAtStill, 4000)
+    end
+    if not GSC.BarrelCrew.Allow(_source, uid, "repair") then return end
+
+    FitUpgrade(_source, uid, key)
 end)
 
 ---oo[ The Tarp Prompt ]oo---
@@ -3783,7 +3884,7 @@ end)
 
 ---oo[ What the law module needs of a barrel ]oo---
 
----o[ For GSC.Upkeep: who owns a still, and taking away an owner's stills (he has been gone too long) ]o---
+---o[ For GSC.Upkeep ]o---
 function Distillery.Owners()
     local owners = {}
     for uid in pairs(BarrelPositions) do
@@ -3797,7 +3898,7 @@ function Distillery.ExpireOwner(owner)
     local removed = 0
     for uid in pairs(BarrelPositions) do
         if BarrelOwner[uid] == owner then
-            RemoveBarrel(uid) -- the row, the stash, the crew and the props, as when it falls apart
+            RemoveBarrel(uid)
             removed = removed + 1
         end
     end
@@ -3835,7 +3936,7 @@ function Distillery.RemainingBottles(uid)
 end
 
 ---oo[ All Barrels Request Sync Event ]oo---
-local LastSyncAsk = {} -- [src] = GetGameTimer() of their last accepted ask
+local LastSyncAsk = {}
 
 AddEventHandler('playerDropped', function()
     LastSyncAsk[source] = nil

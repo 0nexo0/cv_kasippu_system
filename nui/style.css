@@ -1,9 +1,4 @@
-/* One typeface for the whole script: PT Serif (ParaType, SIL Open Font
-   License - see assets/font/PTSerif-OFL.txt). It ships inside this resource
-   instead of being pulled from Google Fonts, so it always loads: a remote
-   import silently falls back to Arial whenever the game has no route to
-   fonts.googleapis.com. Regular, bold, italic and bold italic are all real
-   cuts, so nothing is faked by the browser. */
+/* One typeface for the whole script */
 
 @font-face {
     font-family: "PT Serif";
@@ -33,20 +28,8 @@
     font-style: italic;
 }
 
-/* ---------------------------------------------------------------------------
-   Frontier palette
-
-   Everything reads as ink and charcoal on scorched paper. No pure black, no
-   pure white, no saturated accent - the brightest thing on screen is gilt, and
-   only embers go warmer than that.
---------------------------------------------------------------------------- */
 :root {
-    /* Paper lightened and ink darkened from the first pass. The old
-       #2b1d12-on-#d9c7a3 was fine in isolation, but every panel then laid a
-       brown wash and a scorch vignette OVER the paper and put dark ink on top
-       of that - so the contrast the palette promised was never what actually
-       reached the screen. These are the values after those layers eat their
-       share. */
+    /* Paper lightened and ink darkened from the first pass */
     --paper: #ece0c6;
     --paper-deep: #dccdab;
     --paper-shade: #bda98a;
@@ -62,17 +45,13 @@
     --ember: #a8461a;
     --verdigris: #3f5a45;
 
-    /* Three roles kept as names, one face behind all of them: headings,
-       hand-lettered notes and anything you have to read are all PT Serif.
-       Headings get their weight from bold and letter-spacing instead. */
+    /* Three roles kept as names, one face behind all of them */
     --display: "PT Serif", Georgia, "Times New Roman", serif;
     --hand: "PT Serif", Georgia, "Times New Roman", serif;
     --read: "PT Serif", Georgia, "Times New Roman", serif;
 }
 
-/* Paper fibre. An inline SVG turbulence rather than an asset, so it costs no
-   file and cannot 404. Laid over a surface at low opacity it kills the flat
-   "CSS gradient" look that makes a panel read as a web page. */
+/* Paper fibre */
 .grain::after {
     content: "";
     position: absolute;
@@ -80,26 +59,13 @@
     pointer-events: none;
     /* follows the torn corners instead of squaring them off */
     border-radius: inherit;
-    /* This layer sits OVER the text - there is no way around that without
-       reworking the stacking of every child - so it is now a whisper. At 0.22
-       on multiply it was visibly muddying the ink for a texture nobody looks
-       at directly. */
+    /* This layer sits OVER the text */
     opacity: 0.08;
     mix-blend-mode: multiply;
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='f'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/></filter><rect width='140' height='140' filter='url(%23f)'/></svg>");
 }
 
-/* Note on the charring, since it is repeated on each paper surface below
-   rather than shared: they are tuned differently on purpose - the toast has to
-   stay legible against daylight, the gauge sits over the still. Each stacks
-   foxing stains off-centre, then a vignette that darkens hard into the
-   corners, over the paper itself. The mismatched border-radius does the real
-   work: matched corners read as a rounded UI card however you shade them,
-   mismatched ones read as torn. */
-
-/* The page itself is always "on" but fully transparent and click-through, so
-   a toast can be shown without the journal. The journal's dark backdrop moved
-   off the body onto #dim-overlay, and both only appear with .journal-open. */
+/* The page itself is always "on" but fully transparent and click-through */
 body {
     display: block;
     margin: 0;
@@ -123,29 +89,7 @@ body.journal-open {
     z-index: 5;
 }
 
-/* ===========================================================================
-   THE STILL-MASTER'S BOOK
-
-   A receipt book of about 1900: black leather boards with silver corners,
-   aged laid paper, and a page set the way a jobbing printer of the day would
-   set it - letterspaced capitals for heads, a modern serif for the text,
-   dotted leaders in the ledger, a drop capital to open the method, page
-   numbers at the foot.
-
-   It opens like a book. The closed volume rises into view, its front cover
-   swings back on the spine (a real 3D hinge), and the pages are inked in.
-   Choosing another receipt turns a leaf. Closing runs it all backwards.
-
-   Everything is sized off the book's own width (--bw), so the page is set
-   the same at any resolution: 1em is about one percent of the book.
-
-   States, set by script.js:
-     body.journal-open      the journal is on screen (and stays on while it
-                            closes, until the animation has finished)
-     .journal.is-open       opening / open
-     .journal.is-closing    closing
-     .leaf.turning          a page is being turned
-=========================================================================== */
+/* THE STILL-MASTER'S BOOK A receipt book of about 1900 */
 
 body.journal-open #dim-overlay {
     display: block;
@@ -180,9 +124,7 @@ body.journal-open .journal {
     pointer-events: auto;
 }
 
-/* The stage carries the perspective - and the fade in and out. Fading the
-   book itself (or the cover) would flatten everything under it: the cover's
-   faces stop hiding their backs and lose their perspective. */
+/* The stage carries the perspective */
 .journal-stage {
     position: absolute;
     inset: 0;
@@ -206,9 +148,7 @@ body.journal-open .journal {
 @keyframes stage-in  { from { opacity: 0; } to { opacity: 1; } }
 @keyframes stage-out { from { opacity: 1; } to { opacity: 0; } }
 
-/* ---------------------------------------------------------------------------
-   The book
---------------------------------------------------------------------------- */
+/* The book */
 .book {
     --bw: min(80vw, 128vh);
     position: relative;
@@ -243,17 +183,14 @@ body.journal-open .journal {
     100% { transform: translate(-23.6%, 8%) scale(0.82) rotateX(14deg); }
 }
 
-/* The open spread: book1.png - boards, page block and both pages. While the
-   book is shut only the right half (under the cover) exists; the left page
-   appears the instant the cover lands on it, so the two never show at once. */
+/* The open spread */
 .spread {
     position: absolute;
     inset: 0;
     background: url("assets/img/new/book1.png") center / 100% 100% no-repeat;
     clip-path: inset(0 0 0 49.4%);
     filter: drop-shadow(0 1.6em 2.4em rgba(0, 0, 0, 0.65));
-    /* the clip and the shadow flatten this layer, so the turning leaf inside
-       it needs a perspective of its own to look like a page and not a card */
+    /* the clip and the shadow flatten this layer */
     perspective: 2200px;
     perspective-origin: 49% 50%;
 }
@@ -276,9 +213,7 @@ body.journal-open .journal {
     20%, 100% { clip-path: inset(0 0 0 49.4%); }
 }
 
-/* ---------------------------------------------------------------------------
-   The cover: hinged on the spine, swings toward you and over to the left
---------------------------------------------------------------------------- */
+/* The cover */
 .cover {
     position: absolute;
     left: 49.4%;
@@ -298,8 +233,7 @@ body.journal-open .journal {
     animation: cover-close 1.1s cubic-bezier(0.45, 0.05, 0.35, 1) forwards;
 }
 
-/* visibility, never opacity: opacity would flatten the cover and its back
-   face would never show */
+/* visibility, never opacity */
 @keyframes cover-open {
     0%, 30%   { transform: rotateY(0deg); visibility: visible; }
     81.9%     { transform: rotateY(-180deg); visibility: visible; }
@@ -321,8 +255,7 @@ body.journal-open .journal {
     border-radius: 0.3em 0.9em 0.9em 0.3em;
 }
 
-/* Front: the right half of book_ui.png - the front board with its silver
-   corners and half the tooled spine at the hinge */
+/* Front */
 .cover-front {
     box-shadow:
         0.5em 0.8em 2.2em rgba(0, 0, 0, 0.7),
@@ -431,8 +364,7 @@ body.journal-open .journal {
     filter: sepia(0.6) contrast(1.1) brightness(0.85);
 }
 
-/* Back of the cover: the left page of book1.png, so that when it lands on
-   the left it is already exactly what the open book shows there */
+/* Back of the cover */
 .cover-back {
     transform: rotateY(180deg);
 }
@@ -446,9 +378,7 @@ body.journal-open .journal {
     background: url("assets/img/new/book1.png") center / 100% 100% no-repeat;
 }
 
-/* ---------------------------------------------------------------------------
-   The pages
---------------------------------------------------------------------------- */
+/* The pages */
 .page {
     position: absolute;
     top: 14.2%;
@@ -703,9 +633,7 @@ body.journal-open .journal {
     color: #2a1a0c;
 }
 
-/* A printer's pointing hand would be a glyph a font may lack - a small
-   lozenge is the period-correct and safe choice. Only the recipe's own
-   written lines get one; the ingredients carry their pictures instead. */
+/* A printer's pointing hand would be a glyph a font may lack */
 .ingredients-list li.receipt-extra {
     font-size: 1.02em;
     font-style: italic;
@@ -723,8 +651,7 @@ body.journal-open .journal {
     transform: rotate(45deg);
 }
 
-/* An ingredient: its pictures, name over note, a dotted leader, how much -
-   set like the ledger below it */
+/* An ingredient */
 .ingredients-list li.receipt-line {
     display: flex;
     align-items: center;
@@ -886,8 +813,7 @@ body.journal-open .journal {
     border-bottom: 1px solid rgba(42, 26, 12, 0.5);
 }
 
-/* The buttons: printed labels pasted into the book. "Commence Mixing" is
-   stamped in red, as the one thing on the page that does something. */
+/* The buttons */
 .action-buttons {
     display: flex;
     gap: 1.2em;
@@ -990,9 +916,7 @@ body.journal-open .journal {
     letter-spacing: 0.04em;
 }
 
-/* ---------------------------------------------------------------------------
-   Turning a leaf: right page over to the left, shaded as it lifts
---------------------------------------------------------------------------- */
+/* Turning a leaf */
 .leaf {
     position: absolute;
     left: 49.2%;
@@ -1023,8 +947,7 @@ body.journal-open .journal {
     overflow: hidden;
 }
 
-/* Both faces are cut from book1.png: the right page going up, the left page
-   coming down - with a shadow that deepens as the leaf stands up */
+/* Both faces are cut from book1.png */
 .leaf-front::before,
 .leaf-back::before {
     content: "";
@@ -1069,9 +992,7 @@ body.journal-open .journal {
     animation: ink-in 0.35s ease-out forwards;
 }
 
-/* ---------------------------------------------------------------------------
-   Thumb-index tabs: leather, cut into the fore-edge of the page block
---------------------------------------------------------------------------- */
+/* Thumb-index tabs */
 .category-tabs {
     position: absolute;
     left: 96.6%;
@@ -1095,7 +1016,7 @@ body.journal-open .journal {
 .tab-btn {
     position: relative;
     min-width: 6.8em;
-    white-space: nowrap; /* a long receipt name widens its tab rather than wrapping */
+    white-space: nowrap;
     padding: 0.55em 1em 0.55em 1.2em;
     font-family: var(--read);
     font-size: 1.1em;
@@ -1128,12 +1049,8 @@ body.journal-open .journal {
     box-shadow: 0.25em 0.3em 0.7em rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(214, 178, 104, 0.5);
 }
 
-/* ---------------------------------------------------------------------------
-   The mash slip: a note tucked in beside the book, held by a paper clip
---------------------------------------------------------------------------- */
-/* Tucked in on the left of the book, over the edge of the board. The slips
-   stand one under the other, so the crew slip moves up when there is no
-   mash slip to read. */
+/* The mash slip */
+/* Tucked in on the left of the book, over the edge of the board */
 .journal .slip-stack {
     position: absolute;
     top: calc(50% - min(80vw, 128vh) / 3 + 7vh);
@@ -1147,7 +1064,8 @@ body.journal-open .journal {
 }
 
 .journal #mash-slip,
-.journal #crew-slip {
+.journal #crew-slip,
+.journal #fittings-slip {
     position: relative;
     top: auto;
     right: auto;
@@ -1176,7 +1094,8 @@ body.journal-open .journal {
 .journal #mash-slip .mash-outcome-label,
 .journal #mash-slip .mash-fix-title,
 .journal #crew-slip .mash-line-label,
-.journal #crew-slip .crew-sub {
+.journal #crew-slip .crew-sub,
+.journal #fittings-slip .mash-line-label {
     font-family: var(--read);
     font-variant: small-caps;
     text-transform: none;
@@ -1187,19 +1106,79 @@ body.journal-open .journal {
 .journal #mash-slip .mash-outcome-text,
 .journal #mash-slip .mash-fix-list li,
 .journal #crew-slip .mash-line-value,
-.journal #crew-slip .crew-count {
+.journal #crew-slip .crew-count,
+.journal #fittings-slip .crew-count {
     font-family: var(--read);
 }
 
 .journal.is-closing #mash-slip,
-.journal.is-closing #crew-slip {
+.journal.is-closing #crew-slip,
+.journal.is-closing #fittings-slip {
     display: none;
 }
 
-/* ---------------------------------------------------------------------------
-   The crew slip: the owner's, under the mash slip, set at its own slant.
-   The only slip with something to press, so the only one taking the mouse.
---------------------------------------------------------------------------- */
+/* The fittings slip */
+.journal .slip-stack-right {
+    position: absolute;
+    bottom: calc(50% - min(80vw, 128vh) / 3 + 5vh);
+    left: min(calc(100% - 1vw - min(17vw, 30vh)), calc(50% + min(80vw, 128vh) / 2 - 3.5vw));
+    width: min(17vw, 30vh);
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    pointer-events: none;
+}
+
+.journal #fittings-slip {
+    transform: rotate(2deg);
+    transform-origin: 30% 0;
+    pointer-events: auto;
+}
+
+.journal.is-open #fittings-slip.visible {
+    display: block;
+    animation: fittings-slip-in 0.45s ease-out 1.5s forwards;
+}
+
+@keyframes fittings-slip-in {
+    from { opacity: 0; transform: rotate(-1deg) translate(-1.5vw, 1vh); }
+    to   { opacity: 1; transform: rotate(2deg); }
+}
+
+.fittings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1vh;
+}
+
+/* What the part does, in the book's italic under its line */
+.fitting-desc {
+    margin-top: 0.4vh;
+    font-family: var(--read);
+    font-style: italic;
+    font-size: clamp(11px, 0.72vw, 14px);
+    line-height: 1.25;
+    color: var(--ink-soft);
+}
+
+/* On already: inked in, nothing to press */
+.fitting-done {
+    flex: none;
+    font-family: var(--read);
+    font-weight: 700;
+    font-variant: small-caps;
+    letter-spacing: 0.12em;
+    font-size: clamp(12px, 0.8vw, 16px);
+    color: #3d5a2a;
+}
+
+.fittings-hint {
+    margin-top: 1vh;
+    padding-top: 0.6vh;
+    border-top: 1px solid rgba(70, 40, 15, 0.5);
+}
+
+/* The crew slip */
 .journal #crew-slip {
     transform: rotate(1.6deg);
     transform-origin: 30% 0;
@@ -1313,7 +1292,8 @@ body.journal-open .journal {
 }
 
 .journal #mash-slip .gauge-stage,
-.journal #crew-slip .gauge-stage {
+.journal #crew-slip .gauge-stage,
+.journal #fittings-slip .gauge-stage {
     padding-left: 1.4vw;
     font-family: var(--read);
     font-variant: small-caps;
@@ -1321,11 +1301,7 @@ body.journal-open .journal {
     letter-spacing: 0.22em;
 }
 
-/* ---------------------------------------------------------------------------
-   Tree search loot card
-   Shown on its own, without the journal: no dim overlay, no focus, no clicks.
-   Slides up out of the bottom of the screen, holds, then fades.
---------------------------------------------------------------------------- */
+/* Tree search loot card Shown on its own, without the journal */
 #loot-toast {
     position: fixed;
     left: 50%;
@@ -1337,8 +1313,7 @@ body.journal-open .journal {
     display: none;
     opacity: 0;
     text-align: center;
-    /* A torn scrap of scorched paper rather than a dark slab. Same layering as
-       .scorched, tuned a shade lighter so it stays readable over daylight. */
+    /* A torn scrap of scorched paper rather than a dark slab */
     color: var(--ink);
     background:
         radial-gradient(ellipse at 20% 24%, rgba(120, 86, 44, 0.12), transparent 46%),
@@ -1388,8 +1363,7 @@ body.journal-open .journal {
     padding: 0;
 }
 
-/* Item names the player has one second to read as the card fades - book serif,
-   not the decorative face */
+/* Item names the player has one second to read as the card fades */
 #loot-toast .loot-item {
     font-family: var(--read);
     font-size: 18px;
@@ -1415,15 +1389,10 @@ body.journal-open .journal {
 /*  Drawn with no NUI focus, so it must never take pointer events -    */
 /*  the prompts underneath it are still being held while it is up.     */
 /* ------------------------------------------------------------------ */
-/*  The still-master's card: a scorched tag pinned up beside the barrel.
-    Was a dark translucent slab with neon orange and cyan bars, which is a
-    HUD from a different game. Now it is paper, and the bars are troughs
-    scribed into it and filled with copper and verdigris.
-    The barrel gauge and the aging crate have both left this card for
-    their own brush plates (see "Barrel gauge: in the game's own manner"
-    and "The aging crate: in the game's own manner").                     */
+/* The still-master's card */
 #mash-slip,
-#crew-slip {
+#crew-slip,
+#fittings-slip {
     position: fixed;
     right: 2.2vw;
     top: 34vh;
@@ -1437,9 +1406,7 @@ body.journal-open .journal {
     font-family: var(--hand);
     letter-spacing: 0.04em;
 
-    /* Charring pulled well back from where the text lives: the vignette now
-       starts at 68% instead of 46% and lands far lighter, so the scorch is a
-       border treatment rather than something creeping under the readings. */
+    /* Charring pulled well back from where the text lives */
     background:
         radial-gradient(ellipse at 22% 18%, rgba(120, 86, 44, 0.13), transparent 48%),
         radial-gradient(ellipse at 78% 82%, rgba(96, 64, 30, 0.13), transparent 48%),
@@ -1602,10 +1569,6 @@ body.journal-open .journal {
     margin-bottom: 0.6vh;
 }
 
-/* Every size below was a bare vw unit, which on a 1600-wide window put the
-   labels at about 11px of a decorative face. They are now clamped, so they
-   cannot shrink below a readable floor however small the window gets, and
-   cannot balloon on an ultrawide either. */
 .gauge-stage {
     text-align: center;
     font-family: var(--display);
@@ -1636,8 +1599,7 @@ body.journal-open .journal {
     color: var(--ink-soft);
 }
 
-/* The number you are actually reading while holding a key - book serif, bold,
-   full-strength ink */
+/* The number you are actually reading while holding a key */
 .gauge-value {
     flex: 0 0 3.4vw;
     min-width: 40px;
@@ -1755,8 +1717,7 @@ body.journal-open .journal {
 .gauge-fire-rain.holding { color: var(--ink-faded); font-weight: 400; font-style: italic; }
 .gauge-fire-rain.cooling { color: #7a2810; }
 
-/* Trouble at the still: a red-ruled box under the stage, pulsing in its
-   last ten seconds */
+/* Trouble at the still */
 .gauge-incident {
     display: none;
     margin: 0 0 0.7vh;
@@ -1806,8 +1767,7 @@ body.journal-open .journal {
     animation: gauge-pulse 0.85s ease-in-out infinite;
 }
 
-/* The drip, coloured by what is coming off: clear and cold for the heads,
-   warm amber for the hearts, a muddy brown for the tails */
+/* The drip, coloured by what is coming off */
 .cut-fill.phase-heads {
     background: linear-gradient(180deg, rgba(150, 170, 176, 0.95), rgba(92, 112, 120, 0.95));
 }
@@ -1869,8 +1829,7 @@ body.journal-open .journal {
     50%      { opacity: 0.5; }
 }
 
-/* The band she wants held - pencil hatching, the way a range is marked up
-   on a real gauge plate, rather than a flat green wash */
+/* The band she wants held */
 .gauge-band {
     position: absolute;
     top: 0;
@@ -1937,8 +1896,6 @@ body.journal-open .journal {
     text-shadow: 0 1px 0 rgba(255, 250, 236, 0.55);
 }
 
-/* Darkened from the first pass so each tier clears roughly 5:1 against the
-   paper. They still read as ink greens and rusts rather than status LEDs. */
 #gauge-score.good { color: #2f4a2c; }
 #gauge-score.ok   { color: #6d4b12; }
 #gauge-score.bad  { color: #7a2810; }
@@ -2211,8 +2168,7 @@ body.journal-open .journal {
     transition: left 0.6s linear;
 }
 
-/* The needle: a white pointer above the scale with a hairline through it.
-   It has a little spring in it. */
+/* The needle */
 #barrel-gauge .rd-scale-needle {
     position: absolute;
     top: -11px;
@@ -2319,8 +2275,7 @@ body.journal-open .journal {
     stroke: none;
 }
 
-/* A fixed tick on a ring (the least the wash will light at, where the
-   cooler runs hot) */
+/* A fixed tick on a ring */
 #barrel-gauge .ring-tick {
     transform-box: view-box;
     transform-origin: 24px 24px;
@@ -3389,7 +3344,7 @@ body.journal-open .journal {
 /*  animation is the timer when time is low.                           */
 /* ------------------------------------------------------------------ */
 #minigame {
-    --cg-zone: rgba(217, 178, 106, 0.88);  /* the target (the dial arc reads this from JS) */
+    --cg-zone: rgba(217, 178, 106, 0.88);
     --cg-gold: #d9b26a;
     --cg-gold-soft: rgba(217, 178, 106, 0.5);
     --cg-cream: #f1e6cf;
@@ -3400,7 +3355,7 @@ body.journal-open .journal {
     --cg-good: #9fd08a;
     --cg-key: clamp(30px, 2.3vw, 46px);
     --cg-back: rgba(12, 8, 5, 0.62);              /* the backing every piece carries */
-    --cg-lift: 0 2px 10px rgba(0, 0, 0, 0.5);     /* and the shadow that lifts it off the world */
+    --cg-lift: 0 2px 10px rgba(0, 0, 0, 0.5);
     --cg-ink-shadow: 0 1px 2px rgba(0, 0, 0, 0.95), 0 0 10px rgba(0, 0, 0, 0.75);
 
     position: fixed;
@@ -3417,7 +3372,7 @@ body.journal-open .journal {
     text-align: center;
     -webkit-font-smoothing: antialiased;
 
-    background: none; /* no panel: the pieces carry their own backing */
+    background: none;
 }
 
 #minigame.visible {
@@ -3458,8 +3413,6 @@ body.journal-open .journal {
     border-radius: 8px;
 }
 
-/* A hit glows gold round the game itself, a miss glows ember and shakes it.
-   drop-shadow follows the pieces' shapes, so there is no box to flash. */
 .cg-stage.flash-hit > *  { animation: cg-hit 0.3s ease-out; }
 .cg-stage.flash-miss > * { animation: cg-miss 0.35s ease-out; }
 
@@ -3862,8 +3815,7 @@ body.journal-open .journal {
     top: 11vh;
 }
 
-/* One of a run - a grip on every rung - so it is small and gets out of the
-   climb camera's way */
+/* One of a run */
 #minigame.compact {
     width: clamp(240px, 14vw, 340px);
 }
@@ -3935,9 +3887,7 @@ body.journal-open .journal {
 }
 
 /* ---- pot: tend the fermenting wash ---- */
-/* A clay pot seen from above: rim, amber wash, a swirl that turns with the
-   paddle, froth creeping in from the rim. The four rim marks are key caps;
-   the lit one is where the paddle goes next. */
+/* A clay pot seen from above */
 .cg-pot {
     display: flex;
     flex-direction: column;
@@ -4014,8 +3964,7 @@ body.journal-open .journal {
     box-shadow: 0 0 6px rgba(217, 178, 106, 0.7);
 }
 
-/* the rim marks: key caps sat on the lip. Placed by margin, not transform,
-   so a cap's own lift (.current) and shake (.wrong) still work */
+/* the rim marks */
 .cg-pot-mark {
     --cg-key: clamp(26px, 1.9vw, 38px);
     position: absolute;
@@ -4161,7 +4110,7 @@ body.mouse-game #minigame.mouse {
     pointer-events: none;
 }
 
-/* the rim's shadow falling on the wash, over the canvas and under the spoon */
+/* the rim's shadow falling on the wash, over the canvas and under the sp */
 .cg-spoon-vessel::after {
     content: "";
     position: absolute;
@@ -4268,8 +4217,7 @@ body.mouse-game #minigame.mouse {
     opacity: 0;
 }
 
-/* The spoon: a zero-size anchor at the cursor. Its bowl sits on the anchor and the
-   handle runs out along +x; the game turns it so the handle points over the rim. */
+/* The spoon */
 .cg-spoon-tool {
     position: absolute;
     left: 0;
@@ -4422,10 +4370,7 @@ body.mouse-game #minigame.mouse {
 }
 
 /* ---- minimal: no panel, only the game - the tree climb's grip ---- */
-/* The rail and its keys float over the world on their own: no title, hint,
-   rounds, give-up line or banner. They carry their own dark backing so they
-   still read against a bright sky. A hairline under the rail keeps the clock,
-   and the rail itself shows a hit, a miss and the result. */
+/* The rail and its keys float over the world on their own */
 #minigame.minimal {
     --cg-key: clamp(28px, 2.1vw, 42px);
     width: clamp(260px, 18vw, 400px);
@@ -4479,8 +4424,7 @@ body.mouse-game #minigame.mouse {
     margin: 6px calc(var(--cg-key) + 8px) 0;
 }
 
-/* A hit and a miss flash the rail, not the whole stage (there is no panel
-   behind it for the stage's flash to show on) */
+/* A hit and a miss flash the rail, not the whole stage */
 #minigame.minimal .cg-stage.flash-hit > *,
 #minigame.minimal .cg-stage.flash-miss > * {
     animation: none;
@@ -4506,8 +4450,7 @@ body.mouse-game #minigame.mouse {
 #minigame.minimal.won .cg-reach-trunk  { border-color: var(--cg-good); box-shadow: 0 0 12px rgba(159, 208, 138, 0.75); }
 #minigame.minimal.lost .cg-reach-trunk { border-color: var(--cg-ember); box-shadow: 0 0 12px rgba(208, 100, 58, 0.75); }
 
-/* A recipe card read from the satchel: the book on that one recipe, with
-   nothing about a still - no ledger, notes, mixing button or slips */
+/* A recipe card read from the satchel */
 body.journal-readonly .still-only { display: none !important; }
 
 /* ------------------------------------------------------------------ */
@@ -4526,13 +4469,13 @@ body.journal-readonly .still-only { display: none !important; }
     width: clamp(290px, 21vw, 480px);
     display: flex;
     flex-direction: column;
-    z-index: 60; /* over the journal, its slips and the minigame */
+    z-index: 60;
     pointer-events: none;
 }
 
 .notify-note {
     --seal: #6b5434; /* set per seal below */
-    --life: 4000ms;  /* set per note by the game: how long the fuse burns */
+    --life: 4000ms;
 
     position: relative;
     display: flex;
@@ -4882,7 +4825,7 @@ body.journal-readonly .still-only { display: none !important; }
     right: 0;
     bottom: 0;
     height: 46%;
-    background: linear-gradient(180deg, rgba(255, 250, 235, 0.12), rgba(0, 0, 0, 0.32)), var(--tint); /* plain tint + a shade: older CEF has no colour mixing */
+    background: linear-gradient(180deg, rgba(255, 250, 235, 0.12), rgba(0, 0, 0, 0.32)), var(--tint);
     opacity: 0.85;
     transition: height 0.6s ease-out;
 }
@@ -6554,8 +6497,6 @@ body.journal-readonly .still-only { display: none !important; }
 }
 
 /* ---o[ Performance: a hidden panel's looping animations stop ]o--- */
-/* These panels hide with opacity + visibility, which leaves infinite animations running (and repainting)
-   every frame behind an empty screen. Paused here; they carry on from where they were when shown again. */
 #barrel-gauge:not(.visible) *, #barrel-gauge:not(.visible) *::before, #barrel-gauge:not(.visible) *::after,
 #crate-gauge:not(.visible) *, #crate-gauge:not(.visible) *::before, #crate-gauge:not(.visible) *::after,
 #minigame:not(.visible) *, #minigame:not(.visible) *::before, #minigame:not(.visible) *::after,
@@ -6897,4 +6838,10 @@ body.journal-readonly .still-only { display: none !important; }
     letter-spacing: 1px;
     text-align: center;
     color: var(--pp-dim);
+}
+
+/* Hidden gauges: no animation runs behind them */
+#barrel-gauge:not(.visible) *,
+#crate-gauge:not(.visible) * {
+    animation-play-state: paused !important;
 }

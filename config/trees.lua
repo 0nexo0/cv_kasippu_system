@@ -11,7 +11,6 @@ Config.TreeClimbConf = {
     TreeGrowingTime   = 60,                       -- seconds before a searched tree can be searched again
     PrepareSeconds    = 3,                        -- readying the rope before the climb (sec)
     MinClimbSeconds   = 20,                       -- anti-cheat: search / collect only this long after the server let him start up
-                                                  -- that tree (a real climb takes 30+ s: 3 s rope + 8 rungs at 0.28 a second)
     MaxTopMinutes     = 30,                       -- ...and no longer than this after (then he must climb again)
     SearchMaxDistance = 6.0,                      -- metres (flat) from the trunk the server accepts a crown search from
 
@@ -116,7 +115,6 @@ Config.TreeItemsSearchMinigameConf = {
 }
 
 ---o[ Tree Search Rewards ]o---
--- chance = % (rolled top to bottom), amount = random between min and max
 Config.TreeItemsSearchRewards = {
     { item = Config.Items.Banana,     label = "Banana",            chance = 60, amount = { min = 1, max = 3 } },
     { item = Config.Items.Water,      label = "Water",             chance = 30, amount = { min = 1, max = 1 } },

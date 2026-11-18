@@ -1,7 +1,4 @@
 ---o[ Tasting - sample a bottle to learn what is really in it ]o---
--- Use a Tasting Cup (Config.Items.TastingCup) from the satchel, pick a bottle, and play the
--- nose-and-palate minigame. A good reading writes the bottle's true grade, its notes and its
--- flaws onto it for good. The bottle stays: it is only a sip.
 Config.Tasting = {
     Enabled      = true,  -- false: no tasting; bottles show their grade as before
     HideUntasted = true,  -- true: new bottles read "untasted" (grade and taint hidden) until someone tastes them
@@ -10,10 +7,9 @@ Config.Tasting = {
     RetrySeconds = 20,    -- after a muddled reading, wait this long before the next try (sec)
     MinSeconds   = 5,     -- a result sooner than this is not a real tasting: it counts as muddled
 
-    ---o[ How much a reading reveals (accuracy 0 - 1 from the minigame) ]o---
+    ---o[ How much a reading reveals ]o---
     MuddledBelow = 0.35,  -- below this: nothing learned, the bottle is untouched
     FullFrom     = 0.75,  -- from this: everything (grade, the heat score, every note and flaw)
-                          -- in between: the grade, the main note and the worst flaw
 
     ---o[ What counts as a flaw ]o---
     MustyResidue = 25,    -- barrel fouling (FOUL) at bottling above this: "musty"
@@ -23,7 +19,7 @@ Config.Tasting = {
     PickerMax    = 12,    -- most bottles listed in the picker
     CardSeconds  = 10,    -- how long the tasting-notes card stays up (sec)
 
-    ---o[ The minigame: nose (hold Space and let go in the band), then palate (3 keys in time) ]o---
+    ---o[ The minigame ]o---
     Minigame = {
         type = "taste", hint = "taste",
         time       = 16,   -- seconds for the whole tasting

@@ -7,18 +7,6 @@ Config.RecipeBook = {
 }
 
 ---o[ Recipes ]o---
--- ingredients:  item, label, and ONE of:
---     batch = true   this item sets the batch size (1 = single, 2 = double...)
---     amount = N     needed per batch
---     sugar = N      counts as N sugar (sets the strength)
---     flavour = N    counts as N fruit (adds score)
---     perishable     goes stale over time
--- minSugar      least sugar per batch
--- coconutMl     coconut water needed per batch (counts as coconutSugar sugar)
--- strengths     strongest first: the first one the sugar reaches wins. proof is printed on the bottle
--- rewards       by grade: item, count = bottles PER BATCH. agedItems = what the aging crate turns it into
--- recipeItem    card needed to see / brew it (leave out = everyone knows it)
--- secondRun     distils finished bottles (spiritOf) instead of a wash
 Config.Recipes = {
     ---o[ Kassippu ]o---
     ["kasippu"] = {
@@ -80,11 +68,6 @@ Config.Recipes = {
         ingredients = { -- no yeast: coconut water ferments it
             { item = "water",       label = "Water",       batch = true }, -- the ONLY batch item: every batch = true item counts as a batch
             { item = "brown_sugar", label = "Brown Sugar", sugar = 2 },
-            -- { item = "yeast",       label = "Yeast",       amount = 1 },  -- to make Raa need yeast: amount, never batch = true
-            -- { item = "banana",      label = "Banana",      flavour = 1, perishable = true },
-            -- { item = "apple",       label = "Apple",       flavour = 1 },
-            -- { item = "orange",      label = "Orange",      flavour = 1 },
-            -- { item = "grape",       label = "Grape",       flavour = 1 },
         },
         minSugar     = 1,
         coconutMl    = 500, -- ml of coconut water per batch, carried in the satchel (half a full pot)
@@ -106,86 +89,6 @@ Config.Recipes = {
         },
     },
 
-    ---o[ Arrack (second run of Raa) ]o---
-    -- ["arrack"] = {
-    --     label        = "Arrack",
-    --     title        = "අරක්කු - Double Run",
-    --     titleImage   = "assets/img/new/arakku_text.png",
-    --     displayImage = "assets/img/new/arakku.png",
-
-    --     recipeItem = Config.Items.RecipeArrack, -- card needed
-
-    --     secondRun      = true,
-    --     spiritOf       = "raaa",                -- recipe whose bottles go in
-    --     spiritLabel    = "bottles of Raa",      -- what the book calls them
-    --     spiritPerBatch = 2,                     -- bottles needed per batch
-    --     minGrade       = "GOOD",                -- worst grade accepted
-    --     ingredients = {
-    --         { item = "water", label = "Water", batch = true },
-    --     },
-    --     minSugar       = 0,
-    --     spiritBonus    = { PERFECT = 6, GOOD = 2 }, -- score per bottle, by its grade
-    --     pushBand       = 0.7,                   -- final push target is this much narrower
-    --     wearMultiplier = 2.0,                   -- barrel wear x this
-
-    --     strengths = {
-    --         { key = "DOUBLE", label = "Double-Run", sugar = 0, proof = 120 },
-    --     },
-
-    --     notes = { -- extra lines under the book's receipt
-    --         "Better Raa in makes better Arrack out",
-    --         "No fermenting - but the heat must be held finer",
-    --     },
-    --     instructions = "Run good Raa through the still a second time. It takes a full cook and wears the barrel twice "
-    --         .. "as hard, and the heat has to be held to a finer line - but what comes out is Arrack.",
-
-    --     rewards = {
-    --         ["PERFECT"] = { item = Config.Items.SpiritPerfect, count = 2, quality = "PERFECT" },
-    --         ["GOOD"]    = { item = Config.Items.SpiritGood, count = 1, quality = "GOOD" },
-    --         ["NORMAL"]  = { item = Config.Items.SpiritNormal, count = 1, quality = "NORMAL" },
-    --     },
-    -- },
-
-    ---o[ Double-Run Kassippu (second run of Kassippu) ]o---
-    -- ["kasippu_double"] = {
-    --     label        = "Double-Run Kassippu",
-    --     tab          = "Double Run",            -- short name for the book's tab
-    --     title        = "කසිප්පු - Double Run",
-    --     titleImage   = "assets/img/new/kasippu_text.png",
-    --     displayImage = "assets/img/new/kasippu.png",
-
-    --     recipeItem = Config.Items.RecipeKasippuDouble, -- card needed
-
-    --     secondRun      = true,
-    --     spiritOf       = "kasippu",
-    --     spiritLabel    = "bottles of Kassippu",
-    --     spiritPerBatch = 2,
-    --     minGrade       = "GOOD",
-    --     ingredients = {
-    --         { item = "water", label = "Water", batch = true },
-    --     },
-    --     minSugar       = 0,
-    --     spiritBonus    = { PERFECT = 6, GOOD = 2 },
-    --     pushBand       = 0.7,
-    --     wearMultiplier = 2.0,
-
-    --     strengths = {
-    --         { key = "DOUBLE", label = "Double-Run", sugar = 0, proof = 120 },
-    --     },
-
-    --     notes = {
-    --         "A Perfect second run comes out Fine - no crate needed",
-    --         "No fermenting - but the heat must be held finer",
-    --     },
-    --     instructions = "Run good Kassippu through again. Held perfectly, it comes off the still as Fine, the best a crate "
-    --         .. "could ever make it. It costs a full cook and twice the wear.",
-
-    --     rewards = { -- straight to the aged items
-    --         ["PERFECT"] = { item = Config.Items.KasippuFine, count = 2, quality = "PERFECT" },
-    --         ["GOOD"]    = { item = Config.Items.KasippuMellow, count = 1, quality = "GOOD" },
-    --         ["NORMAL"]  = { item = Config.Items.KasippuRested, count = 1, quality = "NORMAL" },
-    --     },
-    -- },
 }
 
 ---o[ The Mash ]o---

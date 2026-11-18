@@ -8,7 +8,7 @@ Config.BarrelCrew = {
     InviteTimeoutSeconds  = 30,   -- seconds to answer an invite
     InviteCooldownSeconds = 5,    -- seconds between invites, per owner
 
-    ---o[ What a crew member may do (the owner can always do everything) ]o---
+    ---o[ What a crew member may do ]o---
     CrewCan = {
         fuel        = true, -- put wood on
         cool        = true, -- pour water
@@ -25,14 +25,13 @@ Config.BarrelCrew = {
 }
 
 ---o[ Stealing From A Still ]o---
--- Strangers can steal from a finished batch, or spike a fermenting one. Needs CrewOnly = true.
 Config.BarrelTheft = {
     Enabled         = true,
 
     WatchedBlocks   = true, -- no stealing while the owner or crew is at the barrel
     CooldownSeconds = 30,   -- seconds between attempts, per thief
     AlertOwner      = true, -- tell owner + crew about attempts and thefts
-    MinSeconds      = 2,    -- a theft or spike won sooner than this after it started is not a real game: counted as failed (anti-cheat)
+    MinSeconds      = 2, -- a theft or spike won sooner than this after it started is not a real game: counted as failed
 
     Minigame        = { type = "bar", rounds = 3, zone = 0.14, speed = 1.1, shrink = 0.85, speedUp = 1.12,
         strikes = 1, time = 10 },

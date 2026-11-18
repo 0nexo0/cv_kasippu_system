@@ -2,17 +2,13 @@ local Roster = GSC.module('Roster')
 
 local GuardConf = Config.GuardSpawnConf
 
-local ZoneRoster = {}    -- [zoneName] = { slots = {...}, wave = n, waveAt = ts, broken = bool, nearAt = ts }
-local lastKillReport = {} -- [src] = { windowAt = ms, burst = n }, so a bad client cannot machine-gun the event
+local ZoneRoster = {}
+local lastKillReport = {}
 
 ---oo[ THE MEN THEMSELVES ]oo---
--- Every guard is ONE networked ped. The server decides when a slot needs a man and hands the job to
--- one nearby player (a lease); that player creates him and reports the network id; the server checks
--- it and tells everybody. Bodies, despawning and deaths are all decided here, so every player sees
--- the same guards.
-local LEASE_SECONDS = 20       -- a spawn job not reported back in this long is handed out again
-local VERIFY_MARGIN = 60.0     -- metres outside the yard a reported guard may stand
-local KILL_REPORT_RANGE = 300.0 -- metres: a client this far from a guard cannot report him dead
+local LEASE_SECONDS = 20
+local VERIFY_MARGIN = 60.0
+local KILL_REPORT_RANGE = 300.0
 
 local leaseCounter = 0
 local guardModelSet = nil      -- [hash] = true
@@ -98,7 +94,7 @@ local function EnsureRoster(zoneName)
     roster = {
         wave = 1,
         slots = BuildSlots(zoneData, 1),
-        waveAt = nil, -- set only while the yard is broken and a shift is on the way
+        waveAt = nil,
         broken = false,
     }
 
@@ -210,7 +206,7 @@ function Roster.RushBrokenWave(zoneKey)
     BroadcastRoster(zoneKey)
 end
 
----o[ /clearguards: every guard off the map, fresh shifts when somebody is near ]o---
+---o[ /clearguards ]o---
 function Roster.ResetAll()
     for zoneName, roster in pairs(ZoneRoster) do
         DeleteRosterPeds(roster)
@@ -227,7 +223,7 @@ local function MarkSlotDead(zoneName, roster, slot)
     slot.diedAt = os.time()
     slot.respawnAt = os.time() + (GuardConf.RespawnSeconds or 120)
 
-    ---o[ AlwaysStaffed: no empty yard and no waves - every man just comes back ]o---
+    ---o[ AlwaysStaffed ]o---
     if GuardConf.AlwaysStaffed ~= false then
         Shared.Debug(string.format("^3[Guards]^7 %s: slot %d down, back on his post in %ds",
             zoneName, slot.id, GuardConf.RespawnSeconds or 120))
@@ -249,7 +245,7 @@ local function MarkSlotDead(zoneName, roster, slot)
 
         if roster.wave >= (GuardConf.MaxWaves or 3) then
             roster.waveAt = os.time() + ((GuardConf.ClearedMinutes or 30) * 60)
-            roster.wave = 0 -- the next shift starts the escalation over
+            roster.wave = 0
             Shared.Debug(string.format("^1[Guards]^7 %s wiped for the last time - unguarded for %d minutes",
                 zoneName, GuardConf.ClearedMinutes or 30))
         else
@@ -328,7 +324,7 @@ AddEventHandler('gsc_kassippu_alert:server:guardSpawned', function(leaseId, netI
                 if lease.src ~= _source or slot.netId then return end
 
                 if type(netId) ~= 'number' then
-                    slot.lease = nil -- he could not; hand it out again next pass
+                    slot.lease = nil
                     return
                 end
 
@@ -339,7 +335,7 @@ AddEventHandler('gsc_kassippu_alert:server:guardSpawned', function(leaseId, netI
         end
     end
 
-    ---o[ Too late, or a lease that never existed: remove his ped, if it really is his guard ]o---
+    ---o[ Too late, or a lease that never existed ]o---
     if type(netId) == 'number' then
         local entity = NetworkGetEntityFromNetworkId(netId)
         if entity ~= 0 and DoesEntityExist(entity) and GetEntityType(entity) == 1
@@ -375,7 +371,6 @@ local function TickZone(zoneData, now)
                 slot.netId, slot.verified, slot.lease, slot.diedAt = nil, nil, nil, nil
                 changed = true
             end
-
         elseif slot.netId and not slot.verified then
             ---o[ Is it the man we asked for, where we asked for him? ]o---
             if GetEntityType(entity) == 1 and GuardModelSet()[GetEntityModel(entity)]
@@ -388,13 +383,11 @@ local function TickZone(zoneData, now)
                     zoneName, slot.id))
                 slot.netId, slot.lease = nil, nil
             end
-
         elseif slot.verified and not slot.dead then
             ---o[ The server sees him die even if no client says so ]o---
             if GetEntityMaxHealth(entity) > 0 and GetEntityHealth(entity) <= 0 then
                 MarkSlotDead(zoneName, roster, slot)
             end
-
         elseif slot.verified and slot.dead and slot.diedAt and (now - slot.diedAt) >= bodySeconds then
             ---o[ Clear the corpse ]o---
             DeleteSlotPed(slot)
@@ -408,7 +401,7 @@ local function TickZone(zoneData, now)
     end
 
     if nearest <= spawn and not roster.broken then
-        ---o[ Empty posts get a man: one player creates him, everybody sees him ]o---
+        ---o[ Empty posts get a man ]o---
         local perPass = GuardConf.AtPostsOnly ~= false and math.huge or (GuardConf.SpawnPerPass or 1)
         local handedOut = 0
 
@@ -424,7 +417,6 @@ local function TickZone(zoneData, now)
                     zoneName, slot.id, slot.post, leaseCounter, WaveAccuracy(roster.wave))
             end
         end
-
     elseif nearest > reach and RosterHasPeds(roster)
         and (now - (roster.nearAt or 0)) >= math.max(0, GuardConf.DespawnGraceSeconds or 10) then
         ---o[ Nobody about: take the shift off the map (the roster stays) ]o---
@@ -489,7 +481,7 @@ CreateThread(function()
                     if slot.dead then anyDead = true end
                 end
 
-                ---o[ AlwaysStaffed: everyone has gone - the next arrival finds every post manned ]o---
+                ---o[ AlwaysStaffed ]o---
                 if anyDead and GuardConf.AlwaysStaffed ~= false then
                     local _, zoneData = FindZone(zoneName)
                     if zoneData and not AnyPlayerNear(zoneData) then

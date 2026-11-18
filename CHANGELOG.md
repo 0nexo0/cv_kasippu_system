@@ -19,6 +19,42 @@ up to date (green), outdated with the changelog lines from that JSON (red), or a
 
 ## [Unreleased]
 
+### Changed
+- **Code clean-up for release.** Long explanation comments removed; every section keeps one short
+  `---o[ Title ]o---` line. Config files keep their one-line setting notes. No setting or behaviour changed.
+- **`/removetree` always works for tree admins.** The dev tree commands (`spawntree`, `listtreesdb`,
+  `cleartreesdb`, `fixduplicates`) stay behind `Config.DebugTreeCommands`, now **false** by default.
+
+### Removed
+- Unused items in `config/items.lua`: `RecipeArrack`, `SpiritPerfect`, `SpiritGood`, `SpiritNormal`,
+  and the commented-out Arrack recipe in `config/recipes.lua`.
+
+### Fixed
+- Hidden barrel and crate gauges no longer keep a warning animation running behind them (FPS).
+
+### Added
+- **Fittings slip beside the still's book.** Opening the book at your still (owner and crew) now shows a slip
+  on the right with the Copper coil, Iron hoops and Pressure gauge: what each one does, whether it is fitted,
+  and a **Fit** button. Fit takes the part from your satchel. Using the part from the satchel at the still still works.
+  - Each upgrade has `order`, `desc` (the text players read) and optional `requires` in `Config.Upgrades.List`.
+  - `requires` = a Config section that must be on. The Pressure gauge needs `Config.Pressure.Enabled`,
+    the Iron hoops need `Config.BarrelCondition.Enabled`. When it is off, the upgrade is left off the slip and can't be fitted
+    (before, the part was taken and did nothing).
+  - Slip words: `Config.Text.FittingsBook`. New notes: `UpgradeNoItem`, `UpgradeNotUsed`.
+
+### Changed
+- **A still has a set life: at most 2 repairs and 3 batches, then it falls apart.**
+  `Config.BarrelCondition.MaxRepairs` (2) and `MaxBatches` (3) in `config/still.lua`; 0 = no limit.
+  The repair note shows repairs and batches left. Picking the still up and setting it down again does not reset them.
+- **Repairs now take a Barrel Repair Kit (`barrel_repair_kit`), not a spare Kasiya Barrel Kit.**
+  A kit has 5 uses (`Config.BarrelCondition.RepairKitUses`); one repair takes 1 (`RepairCost`).
+  Uses left are kept in the item's metadata and shown in its description. The kit is removed after its last use.
+  **Add the item to your database** (see below) and give players a way to get it (shop, crafting, loot).
+  ```sql
+  INSERT IGNORE INTO `items` (`item`, `label`, `limit`, `can_remove`, `type`, `usable`, `desc`) VALUES
+    ('barrel_repair_kit', 'Barrel Repair Kit', 3, 1, 'item_standard', 0, 'Mends a worn still. Several uses.');
+  ```
+
 ## [1.6.0] - 2026-11-16
 
 ### Added

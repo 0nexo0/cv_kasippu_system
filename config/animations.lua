@@ -1,5 +1,4 @@
 ---o[ Animations ]o---
--- Dict + Name (+ Flag, + Time in ms). An animation that fails to load is skipped.
 Config.AnimConf = {
     ---o[ The still ]o---
     AddWoodScenario     = "WORLD_HUMAN_FIRE_TEND_KNEEL", -- putting a log on: kneel and tend the fire (nil = use the dict below)
@@ -7,14 +6,11 @@ Config.AnimConf = {
     AddWoodAnimName     = "exit_back",
     AddWoodAnimTime     = 3700,                          -- ms
     AddWoodProp         = nil, -- no log in hand. To bring one back:
-                               -- { model = "s_splitfirelog01x_nofire", bone = "PH_R_Hand", offset = vector3(0.0, 0.0, 0.0), rotation = vector3(0.0, 90.0, 0.0) }
 
     AddWaterScene       = "WORLD_HUMAN_BUCKET_POUR_LOW", -- pouring water (scenario)
     AddWaterSceneTime   = 4000,
 
-    ---o[ Props a scenario hands the player and can leave stuck in the hand (the water bucket) ]o---
-    -- After a scenario from client:barrelAnim ends, any of these within ScenarioPropRadius of the player is removed.
-    -- Model names from the RDR3 object list (femga/rdr3_discoveries objects/object_list.lua). {} = keep them.
+    ---o[ Props a scenario hands the player and can leave stuck in the hand ]o---
     ScenarioProps = { "p_bucket01x", "p_bucket02x", "p_bucket03x", "p_bucket04x", "p_bucket06x", "p_bucket07x",
         "p_cs_bucket01x", "p_cs_bucket01bx", "p_cs_bucket03x", "p_waterbucket01x", "p_buckethin01x" },
     ScenarioPropRadius = 1.5, -- metres around the player
@@ -26,12 +22,8 @@ Config.AnimConf = {
     BrewProductAnimTime = 4000,
 
     ---o[ Setting things down / picking them up, and the still's chores ]o---
-    -- Played (from the server) once the action has gone through. `scenario`, or `dict` + `anim` (+ `flag`);
-    -- `time` in ms; `prop` = something held in the hand while it plays (model, bone, offset, rotation).
-    -- nil = no animation. Scenario and prop names checked against the RDR3 lists
-    -- (github.com/femga/rdr3_discoveries: animations/scenarios, objects/object_list.lua).
     Actions = {
-        ---o[ Setting each thing down (a missing one falls back to `place`) ]o---
+        ---o[ Setting each thing down ]o---
         place       = { scenario = "WORLD_HUMAN_BOX_PUT_DOWN_1",       time = 2500 }, -- anything set down
         place_still = { scenario = "WORLD_HUMAN_BOX_PUT_DOWN_1",       time = 2800 }, -- the still (barrel kit)
         place_crate = { scenario = "WORLD_HUMAN_BOX_PUT_DOWN_1",       time = 2500 }, -- the aging crate
@@ -46,7 +38,7 @@ Config.AnimConf = {
         fill   = { scenario = "WORLD_HUMAN_BUCKET_POUR_LOW", time = 3500 }, -- a bucket into the water barrel
         stack  = { scenario = "WORLD_HUMAN_BOX_PUT_DOWN_1",  time = 2500 }, -- logs onto the log rack (no log in hand)
         scrub  = { scenario = "WORLD_HUMAN_CLEAN_TABLE",     time = 4000 }, -- scrubbing the barrel out
-        repair = { scenario = "WORLD_HUMAN_HAMMER_KNEEL",    time = 4000 }, -- mending the staves with a spare kit
+        repair = { scenario = "WORLD_HUMAN_HAMMER_KNEEL",    time = 4000 }, -- mending the staves with a barrel repair kit
         tarp   = { scenario = "WORLD_HUMAN_HAMMER_KNEEL",    time = 3500 }, -- staking the tarp over the still
         vent   = { scenario = "WORLD_HUMAN_CROUCH_INSPECT",  time = 1500 }, -- opening the vent
     },
@@ -86,8 +78,6 @@ Config.AnimConf = {
     CrateBottleHandOffset   = vector3(0.0, 0.0, 0.0),
     CrateBottleHandRotation = vector3(0.0, 0.0, 0.0),
 
-    -- After passing a crate activity / hazard: `scenario`, or `dict` + `anim` (+ `flag`).
-    -- `time` in ms, `holdBottle` = bottle in hand while it plays
     CrateActivities = {
         TURN  = { dict = "amb_player@world_player_bottle_box_pickup@whiskey", anim = "base", flag = 31, time = 4000, holdBottle = true }, -- lifting and turning a bottle
         AIR   = { scenario = "WORLD_HUMAN_FAN", time = 5000 },                -- fanning the crate

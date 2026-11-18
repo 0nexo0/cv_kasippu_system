@@ -1,15 +1,13 @@
 local Stations = GSC.module('Stations')
 
----oo[ The Water Barrel and the Log Rack beside a still (Config.Stations) ]oo---
--- Set down with a ghost, streamed in as local props, filled / stacked / picked up from the F2 menu
--- (Config.Radial.Places.station) or their own prompts. The server owns every number.
+---oo[ The Water Barrel and the Log Rack beside a still ]oo---
 
-local sites = {}       -- [uid] = { water = { x, y, z, h, level, cap }, rack = { x, y, z, h, logs, cap, splits } }
+local sites = {}
 local props = {}       -- [uid .. "|" .. kind] = entity
 local placing = false
-local inRange = {}     -- [uid] = true: stations within StreamDistance (the stream thread keeps it, the near check reads it)
-local near = nil       -- { uid, kind, dist } the station the player stands at (refreshed 4 times a second)
-local holding = false  -- key mode: this module's prompts hold the screen
+local inRange = {}
+local near = nil
+local holding = false
 
 local KINDS = { water = "WaterBarrel", rack = "LogRack" }
 local MODELS = { water = "WaterBarrelModel", rack = "LogRackModel" }
@@ -34,7 +32,7 @@ local function MenuMode()
     return GSC.Radial ~= nil and GSC.Radial.Owns("station")
 end
 
-local badModels = {} -- a model that failed once is not asked for again every second
+local badModels = {}
 
 local function LoadModel(name)
     if not name or name == "" or badModels[name] then return nil end
@@ -70,7 +68,7 @@ function Stations.HoldsPrompts()
     return holding
 end
 
----oo[ The props: in within StreamDistance, out beyond it, gone when the server says so ]oo---
+---oo[ The props ]oo---
 local function Drop(uid, kind)
     local key = uid .. "|" .. kind
     if props[key] then
@@ -144,7 +142,7 @@ CreateThread(function()
                     if distSq <= rangeSq then
                         Spawn(uid, kind, spot)
                         seen[uid] = true
-                    elseif inRange[uid] then -- streamed in last time: may have a prop to drop
+                    elseif inRange[uid] then
                         Drop(uid, kind)
                     end
                 end
@@ -163,7 +161,7 @@ AddEventHandler('onResourceStop', function(resourceName)
     end
 end)
 
----oo[ The still blew up: its water barrel and log rack go up after it, one by one ]oo---
+---oo[ The still blew up ]oo---
 RegisterNetEvent('gsc_kassippu:client:stationsBoom')
 AddEventHandler('gsc_kassippu:client:stationsBoom', function(uid, spots)
     if type(uid) ~= 'string' then return end
@@ -191,12 +189,12 @@ end)
 ---oo[ Which station the player stands at ]oo---
 CreateThread(function()
     while true do
-        Wait(next(inRange) == nil and 1000 or 250) -- none streamed in: nothing can be in reach
+        Wait(next(inRange) == nil and 1000 or 250)
         local found = nil
         if On() and not placing and next(inRange) ~= nil then
             local pos = GetEntityCoords(PlayerPedId())
             local radius = Conf().InteractRadius or 1.5
-            for uid in pairs(inRange) do -- only what is streamed in, not every station on the server
+            for uid in pairs(inRange) do
                 local site = sites[uid] or {}
                 for kind in pairs(KINDS) do
                     local spot = site[kind]
@@ -242,7 +240,7 @@ local function Actions(at)
     return list
 end
 
----oo[ Set down from the still's F2 menu: only what the player carries, and what the still lacks ]oo---
+---oo[ Set down from the still's F2 menu ]oo---
 local carried = { water = false, rack = false } -- from the server (client:stationItems)
 local carriedFor = nil                             -- the still they were asked at
 local carriedAt = 0
@@ -253,7 +251,7 @@ AddEventHandler('gsc_kassippu:client:stationItems', function(data)
     carried = { water = data.water == true, rack = data.rack == true }
 end)
 
----o[ Asked when the player comes to a still, and every few seconds while there (the satchel changes) ]o---
+---o[ Asked when the player comes to a still, and every few seconds while there ]o---
 CreateThread(function()
     while true do
         Wait(1000)
@@ -267,7 +265,7 @@ CreateThread(function()
     end
 end)
 
----o[ For Barrels.RadialActions: the "Set Down ..." wedges at this still ]o---
+---o[ For Barrels.RadialActions ]o---
 local RIGHTS = { water = "cool", rack = "fuel" }
 local ICONS = { water = "droplet", rack = "boxes-stacked" }
 
@@ -280,7 +278,7 @@ function Stations.StillActions(uid, stage)
                 id = "gsc_station_setdown_" .. kind, icon = ICONS[kind],
                 title = string.format(Text().SetDown or "Set Down %s", Label(kind)),
                 run = function()
-                    carriedAt = 0 -- ask again soon: it is no longer in the satchel
+                    carriedAt = 0
                     TriggerServerEvent('gsc_kassippu:server:placeStationFromMenu', uid, kind)
                 end,
             }
@@ -296,7 +294,7 @@ function Stations.RadialActions()
     return { title = Text().Radial or "Water & Logs", icon = "boxes-stacked", actions = Actions(near) }
 end
 
----oo[ Key mode (Config.Radial.Places.station = false): its own prompts, nearer than the still ]oo---
+---oo[ Key mode ]oo---
 local group = GetRandomIntInRange(0, 0xffffff)
 local groupLabel = nil
 local FillPrompt, PickupPrompt
@@ -328,7 +326,7 @@ end)
 
 local fillLatched, pickupLatched = false, false
 local shownKind = nil
-local pouring = false -- a pour into the Water Barrel is being played: no prompts until it is over
+local pouring = false
 
 CreateThread(function()
     while true do
@@ -342,7 +340,7 @@ CreateThread(function()
             sleep = 1000 -- at no station: nothing to show
         end
 
-        ---o[ Closer to the station than to the still: the station's prompts ]o---
+        ---o[ Closer to the station than to the still ]o---
         local claim = false
         if at and not busy and FillPrompt then
             local uid, _, stillPos = nil, nil, nil
@@ -395,9 +393,8 @@ CreateThread(function()
     end
 end)
 
----oo[ Fill Water Barrel: the server started a pour - play it out, watched, and say how it went ]oo---
--- Broken off (X, moved away, ragdoll, dead) = no water: the server only fills on "played out".
-local POUR_MAX_MOVE = 1.0 -- metres the player may shift during the pour
+---oo[ Fill Water Barrel ]oo---
+local POUR_MAX_MOVE = 1.0
 
 RegisterNetEvent('gsc_kassippu:client:stationPour')
 AddEventHandler('gsc_kassippu:client:stationPour', function(uid, ms)
@@ -423,7 +420,7 @@ AddEventHandler('gsc_kassippu:client:stationPour', function(uid, ms)
     end)
 end)
 
----oo[ Setting one down: a ghost of the prop, within reach of the still ]oo---
+---oo[ Setting one down ]oo---
 local function StartPlacement(uid, kind)
     if placing or not KINDS[kind] then return end
     local stillPos = GSC.Barrels ~= nil and GSC.Barrels.Position(uid) or nil

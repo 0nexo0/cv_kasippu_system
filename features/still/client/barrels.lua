@@ -1,6 +1,5 @@
 local Barrels = GSC.module('Barrels')
 
-
 local inZone = false
 local isPlacing = false
 local ghostEntity = nil
@@ -22,30 +21,32 @@ local PourPrompt
 local seizeShown = false
 local pourShown = false
 local IncidentPrompt
-local menuHintShown = false -- the key prompts are hidden because the F2 menu runs the still (Config.Radial.Places.barrel)
+local menuHintShown = false
 local incidentShown = false
 local PickupPrompt
 local pickupShown = false
 local TarpPrompt
 local tarpShown = false
-local tarpPromptText = nil -- Rig Tarp, or Take Down Tarp while one is up
+local tarpPromptText = nil
 local incidentPromptText = nil
 
 local barrelIncident = {}
-local barrelTended = {}          -- [uid] = true once its fermenting wash has been tended (from the gauge)
-local ingredientsPromptText = nil -- Store Ingredients, or Tend The Wash while it ferments
+local barrelTended = {}
+local ingredientsPromptText = nil
 
 local barrelAccess = {}
 local crewLeaveShown = false
 local crewLeaveText = nil
 local stealShown = false
-local isBusy = false -- a minigame at the barrel is running (stirring, stealing)
+local isBusy = false
 
 local woodPromptText = nil
 local stealPromptText = nil
-local waterPromptText = nil -- Pour Water, or Top Up Condenser while the spirit drips
+local waterPromptText = nil
 
 local barrelCut = {}
+local barrelFitted = {}
+local barrelFittedSig = {}
 
 local barrelNeedsScrub = false
 local barrelNeedsRepair = false
@@ -130,13 +131,13 @@ CreateThread(function()
     end
 end)
 
----o[ Out of a scenario for sure: its own exit first, then a hard stop if it still holds the player in place ]o---
-local SCENARIO_EXIT_MS = 1500 -- the longest a scenario's exit may take before it is cut
+---o[ Out of a scenario for sure ]o---
+local SCENARIO_EXIT_MS = 1500
 
 local function EndScenario(ped, scenario)
     ped = ped or PlayerPedId()
     local hash = scenario and GetHashKey(scenario) or nil
-    local function Held() -- only that scenario: one started after it is never cut
+    local function Held()
         if hash then return IsPedUsingScenarioHash(ped, hash) end
         return IsPedUsingAnyScenario(ped)
     end
@@ -147,7 +148,7 @@ local function EndScenario(ped, scenario)
     if Held() then ClearPedTasksImmediately(ped) end
 end
 
----o[ For radial.lua / crates.lua: the same, from any module (waits up to SCENARIO_EXIT_MS) ]o---
+---o[ For radial.lua / crates.lua ]o---
 function Barrels.EndScenario(ped, scenario)
     EndScenario(ped, scenario)
 end
@@ -198,7 +199,7 @@ local function PlayAdvancedAnim(animDict, animName, time, loop, propData)
         ClearPedTasks(playerPed)
         RemoveAnimDict(animDict)
     else
-        EndScenario(playerPed, animName) -- a scenario can hold the player in place after its time: never leave them stuck
+        EndScenario(playerPed, animName)
     end
 end
 
@@ -206,7 +207,7 @@ end
 local function SweepNearbyProps(coords, modelHash, radius, label)
     local removed = 0
 
-    for _ = 1, 10 do -- hard cap: a stuck prop can never hang the client
+    for _ = 1, 10 do
         local prop = GetClosestObjectOfType(coords.x, coords.y, coords.z, radius, modelHash, false, false, false)
         if not DoesEntityExist(prop) then break end
 
@@ -465,6 +466,8 @@ local function ForgetBarrel(uid)
     barrelCut[uid] = nil
     barrelIncident[uid] = nil
     barrelTended[uid] = nil
+    barrelFitted[uid] = nil
+    barrelFittedSig[uid] = nil
     RemoveBarrelZone(uid)
 end
 
@@ -476,7 +479,7 @@ CreateThread(function()
         if next(barrelProps) ~= nil then
             local pCoords = GetEntityCoords(PlayerPedId())
             local streamIn = Config.KasiyaBarrelKitConf.StreamDistance or 80.0
-            local streamOut = streamIn + 10.0 -- so standing on the line does not flicker them
+            local streamOut = streamIn + 10.0
 
             local uids = {}
             for uid in pairs(barrelProps) do uids[#uids + 1] = uid end
@@ -507,7 +510,7 @@ CreateThread(function()
 end)
 
 ---oo[ Barrel Prompts ]oo---
-Citizen.CreateThread(function()
+CreateThread(function()
     local holdTime = Config.KasiyaBarrelKitConf.KasiyaBarrelPromptsHoldTime
 
     ---o[ UI Open Prompt ]o---
@@ -612,7 +615,7 @@ Citizen.CreateThread(function()
     PromptSetGroup(StealPrompt, PromptGroups, 0)
     PromptRegisterEnd(StealPrompt)
 
-    ---o[ The law: Seize The Still - and the cook's answer, Pour It Out ]o---
+    ---o[ The law ]o---
     local law = Config.Law or {}
 
     SeizePrompt = PromptRegisterBegin()
@@ -663,14 +666,13 @@ Citizen.CreateThread(function()
     PromptSetGroup(IncidentPrompt, PromptGroups, 0)
     PromptRegisterEnd(IncidentPrompt)
 
-    ---o[ The radial menu's prompt, shown instead of all of the above when it runs the still ]o---
 end)
 
 ---o[ Track sound state globally for this client ]o---
 local isBubblingPlaying = false
 
 local groupLabelCache = {}
----o[ A stage as the player reads it: "Hold The Heat", not FINAL_PUSH ]o---
+---o[ A stage as the player reads it ]o---
 local function StageInfo(stage)
     return (Config.Text.Stages or {})[stage] or { label = stage }
 end
@@ -887,7 +889,7 @@ local function CanSteal(uid, stage)
     return barrelAccess[uid] ~= nil and barrelAccess[uid].role == "none"
 end
 
----o[ The tarp: the owner and crew, at any stage (the server checks the satchel) ]o---
+---o[ The tarp ]o---
 local function CanTarp(uid)
     local rain = Config.Fuel.Rain
     local role = RoleAt(uid)
@@ -905,13 +907,41 @@ local function TarpBookState(uid)
     return { up = TarpUp(uid), text = Config.Text.TarpBook }
 end
 
----o[ Hold The Heat as a game (Config.HeatSkill.Game): E / R / V there belong to GSC.PushGame ]o---
+---o[ The Fittings slip beside the book ]o---
+local function FittingsBookState(uid)
+    local conf = Config.Upgrades
+    if not (conf and conf.Enabled) then return nil end
+    local role = RoleAt(uid)
+    if not ((role == "owner" or role == "crew") and CanDo(uid, "repair")) then return nil end
+
+    local fitted = barrelFitted[uid] or {}
+    local list = {}
+    for key, up in pairs(conf.List or {}) do
+        if up.item and Shared.UpgradeUsable(up) then
+            list[#list + 1] = {
+                key = key,
+                label = up.label or key,
+                desc = up.desc or "",
+                fitted = fitted[key] == true,
+                order = tonumber(up.order) or 99,
+            }
+        end
+    end
+    if #list == 0 then return nil end
+    table.sort(list, function(a, b)
+        if a.order ~= b.order then return a.order < b.order end
+        return a.key < b.key
+    end)
+    return { list = list, text = Config.Text.FittingsBook }
+end
+
+---o[ Hold The Heat as a game ]o---
 local function PushGameOn()
     local game = Config.HeatSkill and Config.HeatSkill.Enabled and Config.HeatSkill.Game
     return game ~= nil and game.Enabled == true
 end
 
----o[ What the barrel offers at this stage, to this player - the prompts AND the radial menu read this ]o---
+---o[ What the barrel offers at this stage, to this player ]o---
 local function BarrelOffer(stage, uid)
     local Stage = Shared.BarrelStage
     local P = Config.PromptsTxt
@@ -925,7 +955,7 @@ local function BarrelOffer(stage, uid)
     local canScrub = wear and barrelNeedsScrub and CanDo(uid, "scrub")
     local canRepair = wear and barrelNeedsRepair and CanDo(uid, "repair")
 
-    ---o[ The crew, at every stage (inviting is in the book's crew slip) ]o---
+    ---o[ The crew, at every stage ]o---
     local role = RoleAt(uid)
     local crewCount = CrewCount(uid)
 
@@ -960,7 +990,7 @@ local function BarrelOffer(stage, uid)
         and CanDo(uid, "mix") and not barrelTended[uid]
     o.ingredientsText = fermenting and P.TendWashPrompt or P.IngredientsAddingPrompt
 
-    ---o[ ui, wood, water, ingredients, vent, scrub, repair, steal, fuel choice (leave is the same at every stage) ]o---
+    ---o[ ui, wood, water, ingredients, vent, scrub, repair, steal, fuel choice ]o---
     local function Set(ui, wood, water, ingredients, vent, scrub, repair, steal, fuelChoiceToo)
         o.ui, o.wood, o.water, o.ingredients = ui, wood, water, ingredients
         o.vent, o.scrub, o.repair, o.leave, o.steal = vent, scrub, repair, leave, steal or false
@@ -982,7 +1012,7 @@ local function BarrelOffer(stage, uid)
     elseif stage == Stage.MIXING then
         Set(true, false, false, false, false, false, false)
     elseif stage == Stage.FINAL_PUSH and PushGameOn() then
-        Set(true, false, false, false, false, false, false) -- stoke / cool / vent: GSC.PushGame's prompts
+        Set(true, false, false, false, false, false, false)
     else -- HEAT_PAUSE / FINAL_PUSH
         Set(true, canFuel, canCool, false, canVent, false, false)
     end
@@ -999,13 +1029,13 @@ local function BarrelOffer(stage, uid)
     o.pour = (law.Enabled and (law.Pour or {}).Enabled and evidence
         and (role == "owner" or role == "crew") and CanDo(uid, "pour")) and true or false
 
-    ---o[ Pack her up: the owner, at a cold, idle barrel (the server checks the stash) ]o---
+    ---o[ Pack her up ]o---
     o.pickup = (Config.BarrelPickup and Config.BarrelPickup.Enabled
         and stage == Stage.IDLE and not lit and role == "owner") and true or false
 
     o.tarp, o.tarpUp = CanTarp(uid), TarpUp(uid)
 
-    ---o[ Trouble: the owner and crew get the fix, named for what went wrong ]o---
+    ---o[ Trouble ]o---
     local trouble = barrelIncident[uid]
     o.incident = (trouble ~= nil and (role == "owner" or role == "crew") and CanDo(uid, "fix")) and true or false
     o.incidentText = trouble and trouble.label or nil
@@ -1034,8 +1064,7 @@ local function ApplyStageVisibility(stage, uid)
     SetIncidentPrompt(o.incident, o.incidentText)
 end
 
----o[ Do one barrel action - the prompts and the radial menu both come here. The server checks everything again. ]o---
--- fuel: the log to put on (nil = the one picked with the arrows)
+---o[ Do one barrel action ]o---
 local function DoBarrel(action, uid, stage, fuel)
     local S = Shared.BarrelStage
 
@@ -1082,12 +1111,12 @@ local function DoBarrel(action, uid, stage, fuel)
     end
 end
 
----o[ For GSC.Radial: is the book, placing or a barrel minigame holding the screen? ]o---
+---o[ For GSC.Radial ]o---
 function Barrels.IsBusy()
     return isUIOpen or isPlacing or isBusy
 end
 
----o[ For GSC.PushGame / GSC.Stations: the still the player stands at, its stage and spot ]o---
+---o[ For GSC.PushGame / GSC.Stations ]o---
 function Barrels.Here()
     if not inZone or not currentInteractingBarrel then return nil end
     local uid = currentInteractingBarrel
@@ -1110,7 +1139,7 @@ function Barrels.Act(action, uid)
     DoBarrel(action, uid, BarrelStage[uid] or Shared.BarrelStage.IDLE)
 end
 
----o[ For GSC.Radial: what this barrel offers right now, as menu actions ]o---
+---o[ For GSC.Radial ]o---
 function Barrels.RadialActions()
     if not (GSC.Radial ~= nil and GSC.Radial.Owns("barrel")) then return nil end -- the still is on its key prompts
     if not inZone or not currentInteractingBarrel then return nil end
@@ -1145,7 +1174,7 @@ function Barrels.RadialActions()
     if o.wood then
         local burning = stage ~= S.COMPLETED and stage ~= S.BREWING
         if burning and #fuelKinds > 1 then
-            ---o[ One fuel wedge; its own ring holds each log (no arrows needed) ]o---
+            ---o[ One fuel wedge ]o---
             local logs = {}
             for _, kind in ipairs(fuelKinds) do
                 local log = Config.Fuel.Logs[kind] or {}
@@ -1172,7 +1201,7 @@ function Barrels.RadialActions()
     if o.tarp then Add("tarp", o.tarpUp and P.TarpTakeDownPrompt or P.TarpRigPrompt, "umbrella") end
     if o.pickup then Add("pickup", P.BarrelPickupPrompt, "box", (Config.BarrelPickup or {}).HoldMs or 1500) end
     if o.leave then Add("leave", o.leaveText, "user-xmark") end
-    ---o[ The Water Barrel / Log Rack the player carries and this still lacks: set it down from here ]o---
+    ---o[ The Water Barrel / Log Rack the player carries and this still lacks ]o---
     if GSC.Stations ~= nil and GSC.Stations.StillActions then
         for _, action in ipairs(GSC.Stations.StillActions(uid, stage)) do list[#list + 1] = action end
     end
@@ -1183,13 +1212,13 @@ function Barrels.RadialActions()
 end
 
 ---oo[ Interactions Main Loop (For Prompts) ]oo---
-Citizen.CreateThread(function()
-    local promptsHidden = true -- prompts start hidden; only touch them on a change
-    local shownStage = nil     -- the stage whose prompt set is currently on screen
-    local keyCheckedAt = 0     -- the prompt-set key is rebuilt at most every KEY_CHECK_MS, not every frame
-    local keyStage, keyUid = nil, nil -- ...but at once when the stage or the barrel changes
+CreateThread(function()
+    local promptsHidden = true
+    local shownStage = nil
+    local keyCheckedAt = 0
+    local keyStage, keyUid = nil, nil
     local KEY_CHECK_MS = 200
-    local yieldHidden = false -- the key prompts are hidden for GSC.PushGame / GSC.Stations
+    local yieldHidden = false
 
     while true do
         local sleep = 1000
@@ -1201,7 +1230,6 @@ Citizen.CreateThread(function()
             ---o[ Get Current Stage ]o---
             local stage = BarrelStage[barrelUID] or Shared.BarrelStage.IDLE
 
-            -- ---o[ SPATIAL AUDIO LOGIC ]o---
             if stage == Shared.BarrelStage.MIXING or stage == Shared.BarrelStage.FERMENTING
                 or stage == Shared.BarrelStage.BREWING then
                 if not isBubblingPlaying then
@@ -1221,7 +1249,7 @@ Citizen.CreateThread(function()
                 end
             end
 
-            ---o[ The recipe book and barrel placement both own the screen (and setting down a station) ]o---
+            ---o[ The recipe book and barrel placement both own the screen ]o---
             if isUIOpen or isPlacing or isBusy or GSC.Crew.IsInvitePending()
                 or (GSC.Stations ~= nil and GSC.Stations.IsBusy()) then
                 sleep = 200
@@ -1237,11 +1265,11 @@ Citizen.CreateThread(function()
                 sleep = 0
                 promptsHidden = false
 
-                ---o[ Hold The Heat's own prompts (GSC.PushGame), or a station's (key mode), take the still ]o---
+                ---o[ Hold The Heat's own prompts, or a station's, take the still ]o---
                 local yielded = (GSC.PushGame ~= nil and GSC.PushGame.Running())
                     or (GSC.Stations ~= nil and GSC.Stations.HoldsPrompts())
                 if yielded then
-                    sleep = 100 -- nothing of ours on screen: the F2 tag only needs a word every 400 ms
+                    sleep = 100
                     if not yieldHidden then
                         HideAllPrompts()
                         yieldHidden = true
@@ -1249,7 +1277,7 @@ Citizen.CreateThread(function()
                     shownStage = nil
                     if GSC.Radial ~= nil and GSC.Radial.Owns("barrel") then GSC.Radial.Hint("barrel") end
                 elseif (GSC.Radial ~= nil and GSC.Radial.Owns("barrel")) then
-                    sleep = 100 -- menu mode: no key prompts to draw each frame, just the F2 tag
+                    sleep = 100
                     yieldHidden = false
                     if not menuHintShown then
                         HideAllPrompts()
@@ -1261,7 +1289,7 @@ Citizen.CreateThread(function()
                     ---o[ Syncing Prompt With Current Stage ]o---
                     UiPromptSetActiveGroupThisFrame(PromptGroups, GetGroupLabel(stage))
 
-                    ---o[ Which prompts to show: rechecked a few times a second, not built every frame ]o---
+                    ---o[ Which prompts to show ]o---
                     local nowMs = GetGameTimer()
                     if shownStage == nil or stage ~= keyStage or barrelUID ~= keyUid
                         or (nowMs - keyCheckedAt) >= KEY_CHECK_MS then
@@ -1348,7 +1376,7 @@ Citizen.CreateThread(function()
                             DoBarrel("wood", barrelUID, stage)
                         end
 
-                        ---o[ Tend the fermenting wash: the pot minigame (the server checks it all) ]o---
+                        ---o[ Tend the fermenting wash ]o---
                         if stage == Shared.BarrelStage.FERMENTING and AddIngredientsPrompt
                             and StandardJustCompleted(AddIngredientsPrompt) then
                             DoBarrel("ingredients", barrelUID, stage)
@@ -1420,8 +1448,7 @@ Citizen.CreateThread(function()
     end
 end)
 
----oo[ Ask for every barrel ourselves once our scripts are up: after a resource restart the
---     server's load broadcast can arrive before this handler exists ]oo---
+---oo[ Ask for every barrel ourselves once our scripts are up ]oo---
 CreateThread(function()
     Wait(3000)
     TriggerServerEvent('gsc_kassippu:server:requestBarrels')
@@ -1444,7 +1471,7 @@ end)
 
 ---o[ The Character Reads The Book ]o---
 local journalAnim = false
-local journalAt = nil -- the still the book was opened at (nil = a recipe card from the satchel)
+local journalAt = nil
 
 local function StartJournalAnim()
     local scenario = Config.AnimConf.JournalScenario
@@ -1459,7 +1486,7 @@ end
 local function StopJournalAnim()
     if not journalAnim then return end
     journalAnim = false
-    CreateThread(function() EndScenario(PlayerPedId(), Config.AnimConf.JournalScenario) end) -- the notebook scenario, ended for sure (called from NUI callbacks too)
+    CreateThread(function() EndScenario(PlayerPedId(), Config.AnimConf.JournalScenario) end)
 end
 
 ---o[ Barrel UI ]o---
@@ -1529,7 +1556,7 @@ local function BuildReceipt(recipe)
             grade and string.format(txt.SpiritNote, grade.label) or nil, string.format(txt.PerBatch, spiritPer))
     end
 
-    ---o[ Sugar: what each item counts as, and what each strength needs ]o---
+    ---o[ Sugar ]o---
     if #sugars > 0 or requiredSugar then
         table.sort(sugars, function(a, b) return (tonumber(a.sugar) or 0) > (tonumber(b.sugar) or 0) end)
 
@@ -1598,14 +1625,15 @@ AddEventHandler('gsc_kassippu:client:openBook', function(uid, known)
         barrelId = currentInteractingBarrel,
         defaultRecipe = Config.DefaultRecipe,
         tarp = TarpBookState(currentInteractingBarrel),
+        fittings = FittingsBookState(currentInteractingBarrel),
     })
 
     ---o[ Specific Barrel's Data Sync ]o---
     TriggerServerEvent('gsc_kassippu:server:requestSync', currentInteractingBarrel)
 
-    ---o[ The crew slip: the owner's, kept fresh while the book is open ]o---
+    ---o[ The crew slip ]o---
     if CrewOn() and RoleAt(uid) == "owner" then
-        Citizen.CreateThread(function()
+        CreateThread(function()
             while isUIOpen and currentInteractingBarrel == uid do
                 TriggerServerEvent('gsc_kassippu:server:crewRoster', uid)
                 Wait(3000)
@@ -1614,7 +1642,7 @@ AddEventHandler('gsc_kassippu:client:openBook', function(uid, known)
     end
 end)
 
----o[ A recipe card used from the satchel: the book, open on that one recipe, read-only ]o---
+---o[ A recipe card used from the satchel ]o---
 RegisterNetEvent('gsc_kassippu:client:readRecipeCard')
 AddEventHandler('gsc_kassippu:client:readRecipeCard', function(recipeKey)
     local recipe = Config.Recipes[recipeKey]
@@ -1681,11 +1709,28 @@ AddEventHandler('gsc_kassippu:client:updateHeat', function(uid, currentHeat, pro
 
         barrelIncident[uid] = gauge and gauge.incident or nil
 
-        ---o[ Tended already? (a sync without a gauge says nothing either way) ]o---
+        ---o[ Tended already? ]o---
         if gauge then barrelTended[uid] = (gauge.ferment and gauge.ferment.tended) or nil end
+
+        ---o[ The fittings on her ]o---
+        if gauge and type(gauge.fitted) == 'table' then
+            local set, keys = {}, {}
+            for _, key in ipairs(gauge.fitted) do
+                set[key] = true
+                keys[#keys + 1] = tostring(key)
+            end
+            local sig = table.concat(keys, ",")
+            if barrelFittedSig[uid] ~= sig then
+                barrelFitted[uid], barrelFittedSig[uid] = set, sig
+                if isUIOpen and journalAt == uid then
+                    SendNUIMessage({ action = "fittingsState", fittings = FittingsBookState(uid) })
+                end
+            end
+        end
 
         if gauge and gauge.condition ~= nil then
             barrelNeedsRepair = gauge.condition < Config.BarrelCondition.Max
+                and (gauge.repairsLeft == nil or gauge.repairsLeft > 0) -- nil = no limit (MaxRepairs = 0)
             barrelNeedsScrub = (gauge.residue or 0) > 0
         end
 
@@ -1701,7 +1746,7 @@ AddEventHandler('gsc_kassippu:client:updateHeat', function(uid, currentHeat, pro
             Shared.Debug("^5[Heat Sync]^7 Barrel: " ..
                 uid .. " | Heat: " .. math.floor(currentHeat) .. "% | Progress: " .. (progress or 0) .. "%")
         else
-            ---o[ The at-the-barrel gauge (hidden while the Firebox panel shows this still) ]o---
+            ---o[ The at-the-barrel gauge ]o---
             if gauge and barrelAccess[uid] then gauge.crew = barrelAccess[uid].crew end
             if GSC.PushGame ~= nil and GSC.PushGame.OnHeat(uid, currentHeat, gauge) then
                 HideBarrelGauge()
@@ -1726,7 +1771,7 @@ AddEventHandler('gsc_kassippu:client:askClock', function()
     if ok and hour then TriggerServerEvent('gsc_kassippu:server:clock', hour) end
 end)
 
----o[ The nearest object of each ScenarioProps model around the player (nil = none) ]o---
+---o[ The nearest object of each ScenarioProps model around the player ]o---
 local function NearestScenarioProps(anim)
     local found, pos = {}, GetEntityCoords(PlayerPedId())
     local radius = anim.ScenarioPropRadius or 1.5
@@ -1737,7 +1782,7 @@ local function NearestScenarioProps(anim)
     return found
 end
 
----o[ Remove only what the scenario left behind: a prop that was not there before it (never a map bucket) ]o---
+---o[ Remove only what the scenario left behind ]o---
 local function RemoveScenarioLeftovers(anim, before)
     for model, prop in pairs(NearestScenarioProps(anim)) do
         if prop ~= before[model] then
@@ -1754,14 +1799,13 @@ local function RemoveScenarioLeftovers(anim, before)
     end
 end
 
----o[ The Server Confirmed An Action: Play Its Animation (wood, water, bottle) ]o---
+---o[ The Server Confirmed An Action ]o---
 local barrelAnimBusy = false
 RegisterNetEvent('gsc_kassippu:client:barrelAnim')
 AddEventHandler('gsc_kassippu:client:barrelAnim', function(kind)
     if barrelAnimBusy then return end
     local anim = Config.AnimConf
 
-    -- dict, name, scenario, time: a scenario wins over the dict when both are set
     local play = nil
     if kind == "wood" then
         play = { anim.AddWoodAnimDict, anim.AddWoodAnimName, anim.AddWoodScenario, anim.AddWoodAnimTime, true, anim.AddWoodProp }
@@ -1769,7 +1813,7 @@ AddEventHandler('gsc_kassippu:client:barrelAnim', function(kind)
         play = { nil, nil, anim.AddWaterScene, anim.AddWaterSceneTime }
     elseif kind == "bottle" then
         play = { anim.BrewProductAnimDict, anim.BrewProductAnimName, nil, anim.BrewProductAnimTime }
-    elseif type(kind) == 'string' and anim.Actions then -- place(_still/_crate/_water/_rack), pickup, fill, stack, store, ...
+    elseif type(kind) == 'string' and anim.Actions then
         local a = anim.Actions[kind] or (kind:sub(1, 6) == "place_" and anim.Actions.place) or nil
         if a then play = { a.dict, a.anim, a.scenario, a.time, a.flag ~= nil, a.prop } end
     end
@@ -1778,10 +1822,10 @@ AddEventHandler('gsc_kassippu:client:barrelAnim', function(kind)
     barrelAnimBusy = true
     CreateThread(function()
         if play[3] then
-            local before = NearestScenarioProps(anim) -- what stood here already (a map bucket stays)
+            local before = NearestScenarioProps(anim)
             PlayAdvancedAnim(nil, play[3], play[4] or 3000, false, play[6])
 
-            ---o[ The scenario's own prop (the bucket) can stay stuck in the hand once it is stopped: take it away ]o---
+            ---o[ The scenario's own prop can stay stuck in the hand once it is stopped ]o---
             Wait(anim.ScenarioPropDelay or 800)
             RemoveScenarioLeftovers(anim, before)
         else
@@ -1791,13 +1835,9 @@ AddEventHandler('gsc_kassippu:client:barrelAnim', function(kind)
     end)
 end)
 
----o[ For GSC.Stations: play Config.AnimConf.Actions[kind] for ms, watched ]o---
--- onEnd(true)  = played out
--- onEnd(false) = broken off: the scenario ended early (X or anything else that stops it), it never
---                started, the player moved more than maxMove, ragdolled or died
--- onEnd is called the moment it is known; the stray-bucket cleanup runs after it.
-local WATCH_START_MS = 2000 -- a scenario that has not started by then counts as broken off
-local WATCH_END_SLACK = 600 -- a scenario that ends on its own this close to the end counts as played out
+---o[ For GSC.Stations ]o---
+local WATCH_START_MS = 2000
+local WATCH_END_SLACK = 600
 
 function Barrels.PlayWatched(kind, ms, maxMove, onEnd)
     local anim = Config.AnimConf
@@ -1826,7 +1866,7 @@ function Barrels.PlayWatched(kind, ms, maxMove, onEnd)
         if hash then
             if IsPedUsingScenarioHash(ped, hash) then
                 began = true
-            elseif began then -- it stopped before its time (X): broken off, unless it was all but over
+            elseif began then
                 ok = ends - GetGameTimer() <= WATCH_END_SLACK
                 break
             elseif GetGameTimer() - from > WATCH_START_MS then
@@ -1842,7 +1882,7 @@ function Barrels.PlayWatched(kind, ms, maxMove, onEnd)
     if hash then
         EndScenario(ped, scenario)
         Wait(anim.ScenarioPropDelay or 800)
-        RemoveScenarioLeftovers(anim, before) -- the bucket the scenario put in his hand
+        RemoveScenarioLeftovers(anim, before)
     end
     barrelAnimBusy = false
 end
@@ -1945,8 +1985,7 @@ AddEventHandler('gsc_kassippu:client:incidentGame', function(uid, key, game, tit
     end)
 end)
 
----o[ A pot game (spoon / pot) with its words from text.lua and this batch's own ingredients on the tray ]o---
--- Other game types (hold, ...) come back as they are in the config.
+---o[ A pot game with its words from text.lua and this batch's own ingredients on the tray ]o---
 local function PotGame(minigame, recipeKey)
     local game = {}
     for k, v in pairs(minigame or {}) do game[k] = v end
@@ -1974,12 +2013,12 @@ local function PotGame(minigame, recipeKey)
             tray[#tray + 1] = {
                 label = ing.label,
                 item = ing.item,
-                tint = tints[ing.item], -- the colour it gives the wash (nil = a stock colour)
+                tint = tints[ing.item],
                 img = imageUrl and string.format(imageUrl, ing.item) or nil,
             }
         end
     end
-    if #tray < 4 then -- a recipe this short gets the stock names instead
+    if #tray < 4 then
         tray = {}
         for _, label in ipairs(Config.Text.TendWashIngredients or {}) do tray[#tray + 1] = { label = label } end
     end
@@ -2032,7 +2071,7 @@ AddEventHandler('gsc_kassippu:client:tendWash', function(uid, recipeKey)
     end)
 end)
 
----o[ Bottling: pour each bottle to the chalk mark and cork it (the server says how many, and decides the cost) ]o---
+---o[ Bottling ]o---
 RegisterNetEvent('gsc_kassippu:client:bottleGame')
 AddEventHandler('gsc_kassippu:client:bottleGame', function(uid, rounds, recipeKey)
     local conf = Config.Bottling
@@ -2043,7 +2082,7 @@ AddEventHandler('gsc_kassippu:client:bottleGame', function(uid, rounds, recipeKe
         local ped = PlayerPedId()
         local anim = Config.AnimConf
 
-        ---o[ Bent over the jugs while it plays (the bottling anim, looped) ]o---
+        ---o[ Bent over the jugs while it plays ]o---
         local dict = anim.BrewProductAnimDict
         if dict then
             RequestAnimDict(dict)
@@ -2059,7 +2098,6 @@ AddEventHandler('gsc_kassippu:client:bottleGame', function(uid, rounds, recipeKe
         local game = {}
         for k, v in pairs(conf.Minigame or {}) do game[k] = v end
         game.rounds = math.floor(rounds)
-        -- each bottle: its pour and cork time, plus ~1.1 s to slide in and settle
         game.time = game.rounds * ((game.bottleTime or 7) + (game.corkTime or 3) + 1.2) + 1
         game.labels = Config.Text.BottlingLabels
 
@@ -2067,7 +2105,6 @@ AddEventHandler('gsc_kassippu:client:bottleGame', function(uid, rounds, recipeKe
 
         if dict then ClearPedTasks(ped) end
 
-        -- played to the end: the server bottles it. Given up or timed out: nothing is bottled, nothing lost.
         if passed ~= nil and type(outcomes) == 'table' then
             TriggerServerEvent('gsc_kassippu:server:bottleResult', uid, outcomes)
         end
@@ -2110,7 +2147,6 @@ AddEventHandler('gsc_kassippu:client:updateBrewUI', function(barrelId, progress,
     })
 end)
 
----o[ Barrel UI Close Function ]o---
 ---o[ The Recipe Book's Mash Slip ]o---
 RegisterNUICallback('previewMix', function(data, cb)
     cb('ok')
@@ -2141,6 +2177,15 @@ RegisterNUICallback('toggleTarp', function(data, cb)
     end
 end)
 
+---o[ The Fittings slip ]o---
+RegisterNUICallback('fitUpgrade', function(data, cb)
+    cb('ok')
+    local uid = currentInteractingBarrel
+    if not uid or type(data) ~= 'table' or type(data.key) ~= 'string' then return end
+    if not FittingsBookState(uid) then return end
+    TriggerServerEvent('gsc_kassippu:server:fitUpgrade', uid, data.key)
+end)
+
 RegisterNUICallback('crewInvite', function(data, cb)
     cb('ok')
     local uid = currentInteractingBarrel
@@ -2161,7 +2206,7 @@ RegisterNUICallback('closeUI', function(data, cb)
     cb('ok')
 end)
 
----o[ For GSC.UiGuard: is the book up, and the still it was opened at (nil = a recipe card) ]o---
+---o[ For GSC.UiGuard ]o---
 function Barrels.IsJournalOpen()
     return isUIOpen, journalAt
 end
@@ -2191,7 +2236,7 @@ local function StartBarrelPlacement()
 
     GSC.Notify.Objective(Config.Text.KasiyaBarrelPlacementHint, 10000)
 
-    Citizen.CreateThread(function()
+    CreateThread(function()
         local rotZ = 0.0
 
         while isPlacing do
@@ -2281,7 +2326,7 @@ RegisterNUICallback('startMixingNUI', function(data, cb)
     cb('ok')
 end)
 
----oo[ Barrel Exploide Event ]o---
+---oo[ Barrel Exploide Event ]oo---
 RegisterNetEvent('gsc_kassippu:client:barrelBoom')
 AddEventHandler('gsc_kassippu:client:barrelBoom', function(uid, coords)
     ---o[ Create the Explosion Effect ]o---

@@ -1,8 +1,8 @@
 local Radial = GSC.module('Radial')
 
-local menuOpen = false -- the wheel is on screen and holds the focus
-local openedAt = 0     -- GetGameTimer() it opened (the focus watchdog waits a moment)
-local holding = false  -- a timed pick (seize, pour, pick up) is running
+local menuOpen = false
+local openedAt = 0
+local holding = false
 
 local function Conf()
     return Config.Radial or {}
@@ -12,11 +12,11 @@ local function Text()
     return Config.Text.Radial or {}
 end
 
----o[ Who can offer actions, in the order their wedges appear (asked when the menu opens, never cached) ]o---
+---o[ Who can offer actions, in the order their wedges appear ]o---
 local PROVIDERS = { "Crew", "Barrels", "Stations", "Crates", "Climb", "Buyers" }
-local PLACES = { Barrels = true, Stations = true, Crates = true, Climb = true, Buyers = true } -- each answers only within its own range
+local PLACES = { Barrels = true, Stations = true, Crates = true, Climb = true, Buyers = true }
 
----o[ Nothing unless the player stands at a place: a crew invite alone keeps its own G / Backspace prompts ]o---
+---o[ Nothing unless the player stands at a place ]o---
 local function CollectSections()
     local sections, atPlace = {}, false
     for _, name in ipairs(PROVIDERS) do
@@ -35,7 +35,7 @@ local function CollectSections()
     return sections
 end
 
----o[ The items the NUI gets: id, title, icon and sub-rings only (no Lua functions) ]o---
+---o[ The items the NUI gets ]o---
 local function ToNui(actions)
     local items = {}
     for i, action in ipairs(actions) do
@@ -45,14 +45,14 @@ local function ToNui(actions)
     return items
 end
 
----o[ One place offers something: its actions on the first ring. Several: one wedge per place ]o---
+---o[ One place offers something ]o---
 local function BuildItems(sections)
     if #sections == 1 then return ToNui(sections[1].actions) end
 
     local items = {}
     for i, section in ipairs(sections) do
         if #section.actions == 1 then
-            items[#items + 1] = ToNui(section.actions)[1] -- a wedge with one action is just that action
+            items[#items + 1] = ToNui(section.actions)[1]
         else
             items[#items + 1] = { id = "gsc_section_" .. i, title = section.title, icon = section.icon, items = ToNui(section.actions) }
         end
@@ -97,7 +97,7 @@ function Radial.IsOpen()
     return menuOpen or holding
 end
 
----o[ For GSC.UiGuard: is the wheel itself up (it holds the focus), and take it down ]o---
+---o[ For GSC.UiGuard ]o---
 function Radial.MenuOpen()
     return menuOpen
 end
@@ -106,17 +106,17 @@ function Radial.Close()
     CloseMenu()
 end
 
----o[ Does the menu run this place (Config.Radial.Places)? If so its key prompts are hidden ]o---
+---o[ Does the menu run this place? If so its key prompts are hidden ]o---
 function Radial.Owns(place)
     local conf = Conf()
     return conf.Enabled == true and (conf.Places or {})[place] == true
 end
 
----o[ The "F2  Kasippu Menu" tag: a place's prompt loop calls Hint() each frame the player is at it ]o---
-local hintSeenAt = 0   -- GetGameTimer() a place last said the player is at it
+---o[ The "F2  Kasippu Menu" tag ]o---
+local hintSeenAt = 0
 local hintShown = false
 
-function Radial.Hint(place) -- place: "barrel" / "station" / "crate" / "buyer" (for reading the callers)
+function Radial.Hint(place)
     hintSeenAt = GetGameTimer()
 end
 
@@ -124,8 +124,8 @@ end
 CreateThread(function()
     while true do
         local idle = not menuOpen and not hintShown and GetGameTimer() - hintSeenAt > 1000
-        Wait(idle and 500 or 200) -- at no place: look less often (the tag still shows within half a second)
-        ---o[ Something else took the focus while the menu was up: take the menu down too (never stuck on screen) ]o---
+        Wait(idle and 500 or 200)
+        ---o[ Something else took the focus while the menu was up ]o---
         if menuOpen and GetGameTimer() - openedAt > 600 and not IsNuiFocused() then CloseMenu() end
         local conf = Conf()
         local want = conf.Enabled == true and conf.ShowHint ~= false
@@ -141,7 +141,7 @@ function Radial.Open()
     local conf = Conf()
     if not conf.Enabled or menuOpen then return end
 
-    ---o[ Busy, or not at a still / crate / buyer: F2 does nothing at all (no message) ]o---
+    ---o[ Busy, or not at a still / crate / buyer ]o---
     if Blocked() then return end
     local sections = CollectSections()
     if #sections == 0 then return end
@@ -163,7 +163,7 @@ function Radial.Open()
     Shared.Debug(string.format("^5[Radial]^7 Opened with %d place(s) - a click should print \"picked\" next", #sections))
 end
 
----o[ A pick that needs time (seize, pour, pick up): a bar, a pose, and moving breaks it off ]o---
+---o[ A pick that needs time ]o---
 function Radial.Timed(ms, title, run)
     if holding then return end
     holding = true
@@ -204,7 +204,7 @@ end
 ---o[ NUI: a wedge was picked - ask the places again, run it only if it is still on offer ]o---
 RegisterNUICallback('radialSelect', function(data, cb)
     cb('ok')
-    CloseMenu() -- before the action: it may open the book, which takes the focus back
+    CloseMenu()
     local id = data and data.id
     Shared.Debug("^5[Radial]^7 Picked: " .. tostring(id))
     if type(id) ~= 'string' then return end
@@ -236,7 +236,7 @@ RegisterNUICallback('radialClose', function(_, cb)
     SendNUIMessage({ action = "radialClose" })
 end)
 
----o[ The key: a key mapping (Config.Radial.KeyMapping, any keyboard key) or, without one, a game control watched each frame ]o---
+---o[ The key ]o---
 CreateThread(function()
     local key = Config.InteractKeys.RadialMenuKey
     if not key or not Conf().Enabled or Conf().KeyMapping then return end

@@ -1,12 +1,12 @@
 ---o[ The Law ]o---
 Config.Law = {
-    Enabled = true, -- false: no tip-offs, lookouts, raids or market sale reports (guard yards still call the Sheriff: GuardSpawnConf.LawDispatch)
+    Enabled = true, -- false: no tip-offs, lookouts, raids or market sale reports
 
     ---o[ Tip-offs - somebody reports the smoke ]o---
     TipOff = {
         Enabled         = true,
         ChancePerMinute = 0.05, -- base chance per minute a lit still is reported
-        MaxChance       = 0.9,  -- cap after all factors (the worst case today, heavy smoke in town, is 0.05 x 1.6 x 3 = 0.24)
+        MaxChance       = 0.9, -- cap after all factors
         NeedLawOnline   = true, -- no reports while no lawman is on duty
         CooldownMinutes = 10,   -- a still is not reported again within this
 

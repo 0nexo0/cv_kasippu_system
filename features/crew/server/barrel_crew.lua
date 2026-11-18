@@ -1,8 +1,8 @@
 local BarrelCrew = GSC.module('BarrelCrew')
 
-local Crews = {}      -- [uid] = { [charId] = name }, persisted with the barrel
-local Pending = {}    -- [target src] = { uid, from (src), fromName }, one at a time
-local LastInvite = {} -- [owner src] = os.time() of their last invite
+local Crews = {}
+local Pending = {}
+local LastInvite = {}
 
 local function Conf()
     return Config.BarrelCrew or {}
@@ -296,7 +296,7 @@ AddEventHandler('gsc_kassippu:server:crewRespond', function(accepted)
     Shared.Debug(string.format("^2[Crew]^7 (ID: %s) %s joined the crew of %s", _source, name, invite.uid))
 end)
 
----o[ Leaving: the owner sends everyone home, a crew member walks off ]o---
+---o[ Leaving ]o---
 RegisterServerEvent('gsc_kassippu:server:crewLeave')
 AddEventHandler('gsc_kassippu:server:crewLeave', function(uid)
     local _source = source

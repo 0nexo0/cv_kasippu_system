@@ -17,7 +17,6 @@ Config.InteractKeys = {
     BarrelStealKey         = 0x4CC0E2FE,         -- [B]           stranger: steal a bottle | spike the wash
     BarrelPickupKey        = 0x156F7119,         -- [Backspace]   owner: pick up an idle, cold, empty barrel
     BarrelTarpKey          = 0x24978A28,         -- [H]           rig / take down the tarp
-    -- Hold The Heat (Config.HeatSkill.Game) reuses: [E] stoke, [R] hold to cool, [V] vent, [T] trouble
 
     ---o[ Answering a crew invite ]o---
     CrewInviteAcceptKey    = 0x760A9C6F,         -- [G]
@@ -50,11 +49,10 @@ Config.InteractKeys = {
     RadialMenuKey          = 0x3C0A40F2,         -- [F6]          opens the menu only with Config.Radial.KeyMapping = nil (else F2 does)
 }
 
----o[ The Kasippu radial menu - every action of the place you stand at, in one wheel (the prompts still work) ]o---
+---o[ The Kasippu radial menu ]o---
 Config.Radial = {
     Enabled        = true,
-    KeyMapping     = "F2",      -- keyboard key that opens it at a still / crate / buyer (RedM key binding: players can change it in
-                                -- Settings > Key Bindings). nil = use InteractKeys.RadialMenuKey (F6) instead
+    KeyMapping     = "F2", -- keyboard key that opens it at a still / crate / buyer
     Command        = "kasippu", -- chat command that opens it too (the key mapping needs a command: "kasippu" if nil)
     Size           = 375,       -- menu size on screen (px)
     CancelDistance = 1.0,       -- metres: moving this far breaks off a timed pick (seize, pour, pick up)
@@ -62,19 +60,17 @@ Config.Radial = {
     Sound          = false,      -- a soft tick as the pick moves from wedge to wedge
     ShowHint       = true,      -- the "F2  Kasippu Menu" tag, shown only while at a still / crate / buyer (false = none)
 
-    ---o[ Where the menu is used: true = menu only (key prompts hidden, the F2 tag shows), false = key prompts only.
-    --     F2 works only within that place's own range; anywhere else it does nothing. ]o---
+    ---o[ Where the menu is used ]o---
     Places = {
         barrel = true,  -- the still
         crate  = true,  -- the aging crate (the arrows to look at a bottle stay)
         buyer  = true,  -- the buyers
-        station = true, -- the Water Barrel / Log Rack beside a still (keys: R fill, G stack logs, Backspace pick up)
+        station = true, -- the Water Barrel / Log Rack beside a still
         tree   = false, -- the coconut tree: climb, search, collect stay on their keys
     },
-    -- A crew invite always works both ways (its keys and the menu).
 }
 
----o[ UI guard - no Kasippu screen can stay stuck (the book, the menu, a minigame, the Firebox, the ledger, the cup) ]o---
+---o[ UI guard ]o---
 Config.UiGuard = {
     Enabled      = true,
     ResetCommand = "kasippuui", -- chat command: closes every Kasippu screen and frees the mouse / keys (nil = none)

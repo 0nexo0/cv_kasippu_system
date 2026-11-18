@@ -1,14 +1,13 @@
 local Stations = GSC.module('Stations')
 
----oo[ The Water Barrel and the Log Rack beside a still (Config.Stations) - they feed Hold The Heat ]oo---
--- Saved with the still (gsc_kassippu_barrels.stations, written by Distillery's SaveBarrelToDB).
+---oo[ The Water Barrel and the Log Rack beside a still ]oo---
 
-local Sites = {}      -- [uid] = { water = { x, y, z, h, level }, rack = { x, y, z, h, logs = { [kind] = n }, split = { kind, left } } }
-local Ready = false   -- true once the stills (and so these) came back from the database
-local LastAction = {} -- [src] = GetGameTimer() of the last fill / stack / pick up (spam guard)
+local Sites = {}
+local Ready = false
+local LastAction = {}
 
-local KINDS = { water = "WaterBarrel", rack = "LogRack" } -- kind -> its key in Config.Items / Config.Stations / Text.Stations
-local RIGHT = { water = "cool", rack = "fuel" }            -- the crew right each one needs (Config.BarrelCrew.CrewCan)
+local KINDS = { water = "WaterBarrel", rack = "LogRack" }
+local RIGHT = { water = "cool", rack = "fuel" }
 
 local function Conf()
     return Config.Stations or {}
@@ -148,14 +147,14 @@ function Stations.Loaded()
     TriggerClientEvent('gsc_kassippu:client:allStations', -1, AllPublic())
 end
 
----o[ The still is gone (seized, blown up, expired, picked up): its stations go with it ]o---
+---o[ The still is gone ]o---
 function Stations.Forget(uid)
     if not Sites[uid] then return end
     Sites[uid] = nil
     Broadcast(uid)
 end
 
----o[ The still blew up: both go up with it (a blast at each, just after hers) and are gone for good ]o---
+---o[ The still blew up ]o---
 function Stations.Explode(uid)
     local site = Sites[uid]
     if not site then return end
@@ -170,7 +169,7 @@ function Stations.Explode(uid)
     Shared.Debug(string.format("^1[Stations]^7 %d station(s) of %s went up with it", #spots, uid))
 end
 
----o[ The still is picked up: both items back, and the rack's logs (what fits); the water is poured away ]o---
+---o[ The still is picked up ]o---
 function Stations.ReturnAll(src, uid)
     local site = Sites[uid]
     if not site then return end
@@ -193,7 +192,7 @@ function Stations.ReturnAll(src, uid)
     end
 end
 
----oo[ What Hold The Heat draws on (called by Distillery every second of the push) ]oo---
+---oo[ What Hold The Heat draws on ]oo---
 function Stations.Has(uid, kind)
     return Sites[uid] ~= nil and Sites[uid][kind] ~= nil
 end
@@ -212,7 +211,7 @@ function Stations.TakeWater(uid, litres)
     return taken
 end
 
----o[ All of `litres`, or none (the still's pour / condenser / scrub, Config.Stations.StillUsesStock) ]o---
+---o[ All of `litres`, or none ]o---
 function Stations.TakeWaterExact(uid, litres)
     local w = Sites[uid] and Sites[uid].water
     if not w or w.level < litres then return false end
@@ -222,7 +221,7 @@ function Stations.TakeWaterExact(uid, litres)
     return true
 end
 
----o[ Whole logs of one kind on the rack (Add Wood / Light The Fire take one) ]o---
+---o[ Whole logs of one kind on the rack ]o---
 function Stations.LogCount(uid, kind)
     local r = Sites[uid] and Sites[uid].rack
     return r and (r.logs[kind] or 0) or 0
@@ -242,7 +241,7 @@ function Stations.SplitsLeft(uid)
     return (r.split and r.split.left or 0) + RackTotal(r) * SplitsPerLog()
 end
 
----o[ One split off the rack: the power of its log and its kind, or nil when the rack is bare ]o---
+---o[ One split off the rack ]o---
 function Stations.TakeSplit(uid)
     local r = Sites[uid] and Sites[uid].rack
     if not r then return nil end
@@ -264,7 +263,7 @@ function Stations.TakeSplit(uid)
     return tonumber(log.power) or 1.0, r.split.kind
 end
 
----oo[ Setting one down: from the satchel (the item used at the still) or the still's F2 menu ]oo---
+---oo[ Setting one down ]oo---
 local function StartPlacing(src, uid, kind)
     if not Shared.GetChar(src) or not On() then return end
     if not uid or not GSC.Distillery.Position(uid) then
@@ -289,7 +288,7 @@ for kind in pairs(KINDS) do
     end
 end
 
----o[ F2 at the still: "Set Down Water Barrel / Log Rack" (only the still the player stands at) ]o---
+---o[ F2 at the still ]o---
 RegisterServerEvent('gsc_kassippu:server:placeStationFromMenu')
 AddEventHandler('gsc_kassippu:server:placeStationFromMenu', function(uid, kind)
     local _source = source
@@ -298,7 +297,7 @@ AddEventHandler('gsc_kassippu:server:placeStationFromMenu', function(uid, kind)
     StartPlacing(_source, uid, kind)
 end)
 
----o[ Which of the two this player carries (the F2 menu offers to set down only those) ]o---
+---o[ Which of the two this player carries ]o---
 local LastAsk = {}
 RegisterServerEvent('gsc_kassippu:server:stationItems')
 AddEventHandler('gsc_kassippu:server:stationItems', function()
@@ -365,15 +364,10 @@ local function AtStation(src, uid, kind)
     return spot ~= nil and Near(src, spot, (Conf().InteractRadius or 1.5) + 2.0)
 end
 
----oo[ Fill Water Barrel: start the pour, and the water only goes in once it has been played out ]oo---
--- 1. fillStation: checked (at the barrel, crew right, not full, a bucket with water) - nothing taken yet.
---    The player is marked as pouring, and his client plays the pour (Config.AnimConf.Actions.fill).
--- 2. fillStationDone: the client says how it went. Broken off (X, moved away, ragdoll, dead) = no water.
---    Played out = everything checked again, one use of water taken, the barrel filled.
--- One pour at a time per player, and "done" before the pour's time is up is refused: no spamming.
-local Pouring = {}     -- [src] = { uid, ends = GetGameTimer() the pour is over }
-local POUR_SLACK = 750 -- ms a client may report "done" before that (frame / network timing)
-local POUR_LOST  = 5000 -- ms after the pour's end a missing "done" stops blocking him
+---oo[ Fill Water Barrel ]oo---
+local Pouring = {}
+local POUR_SLACK = 750
+local POUR_LOST  = 5000
 
 local function PourMs()
     local a = Config.AnimConf and Config.AnimConf.Actions and Config.AnimConf.Actions.fill
@@ -411,13 +405,13 @@ RegisterServerEvent('gsc_kassippu:server:fillStationDone')
 AddEventHandler('gsc_kassippu:server:fillStationDone', function(uid, done)
     local _source = source
     local pour = Pouring[_source]
-    if not pour or pour.uid ~= uid then return end -- no pour of his under way: nothing to finish
+    if not pour or pour.uid ~= uid then return end
     Pouring[_source] = nil
 
     if done ~= true then return GSC.Notify.Send(_source, Text().PourCancelled, 3000) end
     if GetGameTimer() < pour.ends - POUR_SLACK then return end -- "done" before it could be: no water
 
-    ---o[ Checked again: the barrel, his place and his right may have changed during the pour ]o---
+    ---o[ Checked again ]o---
     if not Shared.GetChar(_source) or not On() or not AtStation(_source, uid, "water") then return end
     if not GSC.BarrelCrew.Allow(_source, uid, RIGHT.water) then return end
 
@@ -505,7 +499,7 @@ AddEventHandler('gsc_kassippu:server:pickupStation', function(uid, kind)
 end)
 
 ---o[ A client that starts late asks for them ]o---
-local LastStationsAsk = {} -- [src] = os.time() of their last accepted ask
+local LastStationsAsk = {}
 
 AddEventHandler('playerDropped', function()
     LastStationsAsk[source] = nil
@@ -514,9 +508,9 @@ end)
 RegisterServerEvent('gsc_kassippu:server:requestStations')
 AddEventHandler('gsc_kassippu:server:requestStations', function()
     local _source = source
-    if not Ready then return end -- the load broadcast is still to come, and will reach it
+    if not Ready then return end
 
-    ---o[ The whole list: once every 15 s per player (as requestBarrels / requestCrates) ]o---
+    ---o[ The whole list ]o---
     local now = os.time()
     if LastStationsAsk[_source] and now - LastStationsAsk[_source] < 15 then return end
     LastStationsAsk[_source] = now

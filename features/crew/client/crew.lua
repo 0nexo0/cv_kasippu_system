@@ -4,7 +4,7 @@ local PromptGroup = CreateVarString(10, 'LITERAL_STRING', "Still Invite")
 local AcceptPrompt
 local DeclinePrompt
 
-local invite = nil -- { uid, from, endsAt (game timer ms) } while one is waiting
+local invite = nil
 
 function Crew.IsInvitePending()
     return invite ~= nil
@@ -40,7 +40,7 @@ local function Answer(accepted)
     TriggerServerEvent('gsc_kassippu:server:crewRespond', accepted)
 end
 
----o[ For GSC.Radial: answer the invite that stands (the same Answer as the prompts) ]o---
+---o[ For GSC.Radial ]o---
 function Crew.RadialActions()
     if not invite then return nil end
     local P = Config.PromptsTxt

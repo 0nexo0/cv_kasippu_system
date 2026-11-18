@@ -1,9 +1,9 @@
 local Trees = GSC.module('Trees')
 
-local spawnedTrees = {}   -- [entity] = { entity, coords, uid, heading, persist }
-local spawnedByUid = {}   -- [uid] = entity, so the streaming thread never has to scan spawnedTrees
-local treeDataCache = {}  -- every tree the server knows about, spawned or not
-local treeBuckets = {}    -- [uid] = bucket entity attached to that tree
+local spawnedTrees = {}
+local spawnedByUid = {}
+local treeDataCache = {}
+local treeBuckets = {}
 
 local streamDistance = Config.TreeClimbConf.StreamDistance or 100.0
 local despawnDistance = Config.TreeClimbConf.DespawnDistance or 120.0
@@ -155,7 +155,7 @@ function Trees.Remove(entity)
     if treeData then
         Shared.Debug("^1[Tree Remove]^7 Removing tree: " .. treeData.uid)
 
-        GSC.Climb.Abort() -- same as DespawnTree: never leave him on a tree that is gone
+        GSC.Climb.Abort()
 
         DeleteLocalObject(entity)
 
@@ -249,7 +249,7 @@ CreateThread(function()
             end
 
             if pendingSpawn then
-                sleep = 250 -- work left over: come back soon, but not every frame
+                sleep = 250
             elseif nearestSq <= streamSq then
                 sleep = 1000
             elseif nearestSq <= (streamSq * 4) then
@@ -258,7 +258,7 @@ CreateThread(function()
                 sleep = 5000
             end
         else
-            sleep = 3000 -- No tree data yet (server has not answered): barely tick
+            sleep = 3000
         end
 
         Wait(sleep)
@@ -335,7 +335,6 @@ RegisterCommand('listtrees', function()
 end, false)
 
 ---o[ /cleartrees and /reloadtrees: admins, checked by the server ]o---
--- (/cleartreesdb is the server's own command now; this client one sent an event nothing handled)
 RegisterNetEvent('gsc_kassippu:client:adminCommand')
 AddEventHandler('gsc_kassippu:client:adminCommand', function(name)
     if name == 'cleartrees' then
@@ -350,12 +349,6 @@ end)
 ---oo[ Accessors For Other Modules ]oo---
 function Trees.AnySpawned()
     return next(spawnedByUid) ~= nil
-end
-
-function Trees.GetEntity(uid)
-    local entity = uid and spawnedByUid[uid]
-    if entity and DoesEntityExist(entity) then return entity end
-    return nil
 end
 
 ---oo[ EXPORTS ]oo---

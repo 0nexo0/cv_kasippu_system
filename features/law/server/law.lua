@@ -1,10 +1,10 @@
 local Law = GSC.module('Law')
 
 local GameHour = nil -- as a client last said
-local LastTip = {}    -- [uid] = os.time() it was last reported
-local LastWarn = {}   -- [uid] = os.time() of the last lookout warning
-local LastNotice = {} -- [uid] = os.time() the people at it last noticed the law
-local LastSaleTip = {} -- [src] = os.time() a sale of theirs was last reported
+local LastTip = {}
+local LastWarn = {}
+local LastNotice = {}
+local LastSaleTip = {}
 
 local function Conf()
     return Config.Law or {}
@@ -25,8 +25,8 @@ end
 
 ---oo[ The Clock ]oo---
 
----o[ Only the player the server asked, once, within a few seconds: no one else can set the hour ]o---
-local ClockAsked = nil -- { src, at = GetGameTimer() } of the open question
+---o[ Only the player the server asked, once, within a few seconds ]o---
+local ClockAsked = nil
 
 RegisterServerEvent('gsc_kassippu:server:clock')
 AddEventHandler('gsc_kassippu:server:clock', function(hour)
@@ -46,7 +46,7 @@ local function AskClock()
     end
 end
 
----o[ The game hour, as a client last said (nil until one has) - also used by the market's opening hours ]o---
+---o[ The game hour, as a client last said ]o---
 function Law.Hour()
     return GameHour
 end
@@ -60,7 +60,7 @@ end
 
 ---oo[ Tip-offs ]oo---
 
----o[ Where a still stands: in a town, out in the wilds, or in between ]o---
+---o[ Where a still stands ]o---
 local function PlaceFactor(pos)
     local t = Conf().TipOff or {}
     local nearest = math.huge
@@ -117,7 +117,7 @@ local function TipOff(uid, lawmen)
     Shared.Debug(string.format("^1[Law]^7 Still %s reported to %d lawmen", uid, #lawmen))
 end
 
----o[ A sale to a buyer (Config.Market.Law): somebody may have seen the bottles change hands ]o---
+---o[ A sale to a buyer ]o---
 function Law.ReportSale(src, pos)
     local m = (Config.Market or {}).Law or {}
     local t = Conf().TipOff or {}
@@ -179,7 +179,7 @@ end
 function Law.CheckLookouts()
     local conf = Conf().Lookout or {}
     if not (Conf().Enabled and conf.Enabled) then return end
-    if next(GSC.Distillery.List()) == nil then return end -- no still on the server: no one to scan
+    if next(GSC.Distillery.List()) == nil then return end
 
     local lawmen = Lawmen()
     if #lawmen == 0 then return end

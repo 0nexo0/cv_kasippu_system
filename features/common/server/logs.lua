@@ -1,18 +1,6 @@
 local Logs = GSC.module('Logs')
 
 ---oo[ Discord Logs (server only) ]oo---
--- Staff get a record of what causes disputes or hides cheating: explosions, thefts, the law,
--- crate lock-picks and admin actions. GSC.Logs.Send is a plain server function - never a net
--- event - so no client can write a log line.
---
--- The webhook comes only from server-side sources (the shared config/*.lua is sent to every player):
---   config/webhooks.lua (a server_script, never sent to players): Config.Webhooks.Main / .<category>
---   or a server convar, which wins over the file:
---   set gsc_kasippu_webhook "https://discord.com/api/webhooks/..."
---   set gsc_kasippu_webhook_<category> "..."  (optional: explosion / theft / law / lockpick / admin / market)
---
--- Lines are queued per webhook and sent up to 10 at a time every 2 s (Discord's limits), a
--- "slow down" (429) is waited out, and nothing in a message can ping anyone.
 
 local COLORS = {
     explosion = 0xC0392B, -- fire red
@@ -22,11 +10,11 @@ local COLORS = {
     admin     = 0x4D7385, -- slate blue
     market    = 0x3F7A4A, -- money green
 }
-local BATCH = 10        -- embeds per Discord message (Discord's limit)
-local QUEUE_MAX = 50    -- lines kept waiting per webhook; past that the oldest go
-local FLUSH_MS = 2000   -- one message per webhook at most this often
+local BATCH = 10
+local QUEUE_MAX = 50
+local FLUSH_MS = 2000
 
-local queues = {} -- [url] = { items = { embed... }, waitUntil = ms, busy = bool }
+local queues = {}
 
 local function Conf()
     return Config.Logs or {}
@@ -41,12 +29,11 @@ function Logs.Label(key)
     return ((T().Fields or {})[key]) or key
 end
 
----o[ The webhook for a category: its own convar, else the main one (a bad override never mutes it) ]o---
+---o[ The webhook for a category ]o---
 local function Valid(url)
     return url ~= nil and url:match('^https://') ~= nil
 end
 
--- Order: group convar -> group in config/webhooks.lua -> main convar -> Main in config/webhooks.lua
 local function WebhookFor(category)
     local hooks = Config.Webhooks or {}
     local key = tostring(category)
@@ -56,7 +43,7 @@ local function WebhookFor(category)
         GetConvar('gsc_kasippu_webhook', ''),
         hooks.Main,
     }
-    for i = 1, 4 do -- fixed count: a missing entry is nil, and # is unreliable with gaps
+    for i = 1, 4 do
         local url = candidates[i]
         if type(url) == 'string' and Valid(url) then return url end
     end
@@ -66,12 +53,12 @@ end
 ---o[ Text that cannot ping, break the layout or run too long ]o---
 local function Clean(value, max)
     local s = tostring(value == nil and "-" or value)
-    s = s:gsub("@", "@\u{200B}")              -- @everyone, <@id>, <@&role>: all broken
+    s = s:gsub("@", "@\u{200B}")
     s = s:gsub("`", "'")                       -- no code blocks
     s = s:gsub("([%*_~|%[%]\\>])", "\\%1")     -- no markdown tricks
     max = max or 1000
     if #s > max then
-        local ok, cut = pcall(utf8.offset, s, 0, max - 2) -- start of the letter holding that byte: never cut one in half
+        local ok, cut = pcall(utf8.offset, s, 0, max - 2)
         s = s:sub(1, (ok and cut and cut - 1) or (max - 3)) .. "..."
     end
     return s ~= "" and s or "-"
@@ -84,7 +71,7 @@ local function CharName(Character)
     return name ~= "" and name or "?"
 end
 
----o[ Who did it: character, server id, account, character and Discord ids ]o---
+---o[ Who did it ]o---
 function Logs.Player(src)
     src = tonumber(src)
     if not src or src <= 0 then return T().Console or "Server console" end
@@ -103,7 +90,7 @@ function Logs.Player(src)
     return table.concat(lines, "\n")
 end
 
----o[ An owner (character id string): their name if they are on, else marked offline ]o---
+---o[ An owner ]o---
 function Logs.Owner(ownerId)
     if not ownerId or ownerId == "" or ownerId == "Unknown" then return "-" end
     for _, playerId in ipairs(GetPlayers()) do
@@ -122,7 +109,7 @@ function Logs.Where(pos)
     return string.format("%.1f, %.1f, %.1f", pos.x, pos.y, pos.z or 0.0)
 end
 
----o[ One log line. fields = { { name =, value =, inline =, raw = } } - raw: value is already safe ]o---
+---o[ One log line ]o---
 function Logs.Send(category, title, fields)
     local conf = Conf()
     if conf.Enabled == false or (conf.Events or {})[category] == false then return end
@@ -156,7 +143,7 @@ function Logs.Send(category, title, fields)
             inline = f.inline == true,
         }
     end
-    if #list > 0 then embed.fields = list end -- (an empty table would encode as an object, not a list)
+    if #list > 0 then embed.fields = list end
 
     local q = queues[url]
     if not q then
@@ -178,7 +165,6 @@ local function Post(url, q)
         avatar_url = (conf.Avatar and conf.Avatar ~= "") and conf.Avatar or nil,
         embeds = batch,
     })
-    -- no pings, written by hand so it is a real empty list whatever the JSON library does with {}
     payload = payload:sub(1, -2) .. ',"allowed_mentions":{"parse":[]}}'
 
     q.busy = true
@@ -187,7 +173,6 @@ local function Post(url, q)
         status = tonumber(status) or 0
 
         if status == 429 then
-            -- slow down: wait as long as Discord says, then send this batch again first
             local ok, data = pcall(json.decode, body or "")
             local wait = (ok and type(data) == 'table' and tonumber(data.retry_after)) or 2
             if wait > 100 then wait = wait / 1000 end -- some API versions answer in ms
@@ -195,7 +180,6 @@ local function Post(url, q)
             for i = #batch, 1, -1 do table.insert(q.items, 1, batch[i]) end
             while #q.items > QUEUE_MAX do table.remove(q.items) end
         elseif status < 200 or status >= 300 then
-            -- a bad webhook or payload: say so once per failure, and drop the batch (no endless retries)
             print(string.format("^1[Kasippu log]^7 Discord answered %d - check the URL in config/webhooks.lua (or the gsc_kasippu_webhook convar)", status))
         end
     end, 'POST', payload, { ['Content-Type'] = 'application/json' })

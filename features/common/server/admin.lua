@@ -2,7 +2,7 @@ local Admin = GSC.module('Admin')
 
 local VORPcore = exports.vorp_core:GetCore()
 
----o[ Does this player pass one permission block ({ Ace, Groups })? ]o---
+---o[ Does this player pass one permission block? ]o---
 local function Passes(src, conf)
     if type(conf) ~= 'table' then return false end
     if conf.Ace and IsPlayerAceAllowed(src, conf.Ace) then return true end
@@ -18,14 +18,12 @@ local function Passes(src, conf)
 end
 
 ---o[ Is this player an admin? The console always is. ]o---
--- Config.Admin, or the command's own block (Config.TreeAdmin, Config.GiveCommand) when given
 function Admin.Is(src, conf)
     if src == 0 then return true end
     return Passes(src, Config.Admin) or Passes(src, conf)
 end
 
----o[ Commands that act on the admin's own game: checked here, carried out there ]o---
--- A check inside a client command can be skipped, so the client no longer registers these
+---o[ Commands that act on the admin's own game ]o---
 local CLIENT_COMMANDS = { "clearguards", "treeview", "toggledebugzones", "cleartrees", "reloadtrees" }
 
 for _, name in ipairs(CLIENT_COMMANDS) do
@@ -35,7 +33,7 @@ for _, name in ipairs(CLIENT_COMMANDS) do
         if not Admin.Is(_source) then
             return GSC.Notify.Send(_source, Config.Text.AdminNoAccess, 3000)
         end
-        if name == "clearguards" then GSC.Roster.ResetAll() end -- the guards are networked: the server removes them
+        if name == "clearguards" then GSC.Roster.ResetAll() end
         TriggerClientEvent('gsc_kassippu:client:adminCommand', _source, name)
     end, false)
 end

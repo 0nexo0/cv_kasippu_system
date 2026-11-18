@@ -1,6 +1,6 @@
 local BarrelTheft = GSC.module('BarrelTheft')
 
-local Attempts = {} -- [src] = { uid, kind, started (os.time), startedMs (GetGameTimer) }
+local Attempts = {}
 local Cooldown = {} -- [src] = os.time() they may try again
 
 local function Conf()
@@ -72,7 +72,7 @@ local function CanTamper(src, uid, kind)
         return false
     end
 
-    ---o[ One wash only takes so many spikes (SpikeMaxPerBatch, 0 = no limit) ]o---
+    ---o[ One wash only takes so many spikes ]o---
     local maxSpikes = tonumber(Conf().SpikeMaxPerBatch) or 0
     if kind == "spike" and maxSpikes > 0 and GSC.Distillery.SpikeCount(uid) >= maxSpikes then
         Notify(src, Config.Text.SpikeAlready, 3000)

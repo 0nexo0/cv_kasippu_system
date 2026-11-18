@@ -1,8 +1,6 @@
 local UiGuard = GSC.module('UiGuard')
 
 ---oo[ No Kasippu screen can stay stuck (Config.UiGuard) ]oo---
--- Focus left on with none of our screens up: freed. A screen left up without the keys: closed.
--- Death closes them all. The book closes if the player is no longer at its still. A chat command resets everything.
 
 local function Conf()
     return Config.UiGuard or {}
@@ -15,7 +13,7 @@ local function Call(fn, ...)
     return result
 end
 
----o[ Every screen that takes the focus: is it up, and how it is taken down (asked at the point of use) ]o---
+---o[ Every screen that takes the focus ]o---
 local OWNERS = {
     {
         name = "journal",
@@ -46,7 +44,7 @@ local OWNERS = {
         name = "minigame",
         open = function() return GSC.Minigame ~= nil and GSC.Minigame.IsActive() end,
         close = function() GSC.Minigame.Cancel() end,
-        keepsFocus = true, -- its own watchdog takes the focus back: never closed for losing it
+        keepsFocus = true,
     },
 }
 
@@ -66,18 +64,18 @@ local function CloseAll()
     end
 end
 
----o[ Everything down: our screens closed, the focus freed, the page told to hide them (all = the gauges too) ]o---
+---o[ Everything down ]o---
 function UiGuard.ResetAll(all)
     CloseAll()
     SetNuiFocus(false, false)
     SendNUIMessage({ action = "uiReset", all = all == true })
 end
 
----o[ The watch: 1 s apart while nothing of ours is up, 4 times a second while something is ]o---
+---o[ The watch ]o---
 CreateThread(function()
-    local orphanSeen = 0   -- checks in a row with the focus on and none of our screens up
-    local lostSince = {}   -- [owner name] = GetGameTimer() it was first seen up without the focus
-    local awaySeen = 0     -- checks in a row with the book open and the player no longer at its still
+    local orphanSeen = 0
+    local lostSince = {}
+    local awaySeen = 0
 
     while true do
         local conf = Conf()
@@ -113,10 +111,10 @@ CreateThread(function()
                 end
             end
 
-            ---o[ The focus is ours but no screen of ours is up: free it (two checks in a row, not a race) ]o---
+            ---o[ The focus is ours but no screen of ours is up ]o---
             if focused and not anyOpen then
                 orphanSeen = orphanSeen + 1
-                if orphanSeen == 2 then -- once per spell (another resource's own UI may hold the focus meanwhile)
+                if orphanSeen == 2 then
                     Shared.Debug("^3[UiGuard]^7 Focus held with no screen up - freed")
                     SetNuiFocus(false, false)
                     SendNUIMessage({ action = "uiReset" })
@@ -143,7 +141,7 @@ CreateThread(function()
     end
 end)
 
----o[ The last resort: a chat command that closes every Kasippu screen and frees the player ]o---
+---o[ The last resort ]o---
 CreateThread(function()
     local command = Conf().ResetCommand
     if Conf().Enabled == false or not command then return end

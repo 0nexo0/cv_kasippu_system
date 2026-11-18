@@ -3,17 +3,17 @@ local Climb = GSC.module('Climb')
 local maxSteps = Config.TreeClimbConf.ClimbMaxSteps
 local currentHeight = 0
 local active = false
-local climbPromptLatched = false -- edge detection for the climb prompt hold
+local climbPromptLatched = false
 local TreeGroup = GetRandomIntInRange(0, 0xffffff)
 local ClimbPrompt
-local CreateClimbPrompt -- defined with the prompt thread below; the top-of-tree prompts recreate it
+local CreateClimbPrompt
 local climbPendingUID = nil
 local climbApproval = nil
-local groundTree, groundTreeData = nil, nil -- the tree in reach on the ground, for GSC.Radial (set by the prompt loop)
-local atTop = false                        -- up in a crown, in the loop that reads the top prompts
-local topRequest = nil                     -- "search" / "collect" / "down": a radial pick for that loop
-local climbBlockedUntil = 0  -- after a fall the prompt stays hidden until this, so he cannot re-climb mid-ragdoll
-local lastGripCheckEnd = 0   -- when the last legends-keypress round returned (legacy provider only)
+local groundTree, groundTreeData = nil, nil
+local atTop = false
+local topRequest = nil
+local climbBlockedUntil = 0
+local lastGripCheckEnd = 0
 
 local StartClimbSequence, HandleFall, ClimbDownSequence
 
@@ -37,8 +37,8 @@ local function AttachAtHeight(ped, treeEntity, heightSteps)
 end
 
 ---oo[ Freeze Him At A Climb Level, For Everyone ]oo---
-local climbAnim = nil -- the loop he is in: { dict, name, flag, duration, phase, expect, startedAt }
-local lastPinAt = 0   -- when PinAtHeight last pushed his position to everyone
+local climbAnim = nil
+local lastPinAt = 0
 
 local function SetClimbAnim(dict, name, flag, duration)
     climbAnim = dict and {
@@ -60,7 +60,7 @@ local function StartClimbAnimAt(ped, phase)
     if not a or not HasAnimDictLoaded(a.dict) then return end
     TaskPlayAnim(ped, a.dict, a.name, 1000.0, -4.0, a.duration, a.flag, phase or 0.0, false, false, false)
     a.startedAt = GetGameTimer()
-    a.expect = phase -- verified next frame, in case the start phase did not take
+    a.expect = phase
 end
 
 local function TrackClimbAnim(ped)
@@ -130,7 +130,7 @@ local function ClimbUpToHeight(ped, treeEntity, heightSteps)
     return z
 end
 
----oo[ One Grip Check (legends-keypress, TreeMinigameProvider = "legacy") ]oo---
+---oo[ One Grip Check ]oo---
 local function RunKeypressCheck()
     local kp = Config.LegendKeyPressConf
     local gap = kp.KeyPressGapMs or 2300
@@ -295,10 +295,10 @@ function Climb.TryStart(treeEntity, treeData)
 end
 ---oo[ Top Of The Tree Prompts ]oo---
 local TopGroup = GetRandomIntInRange(0, 0xffffff)
-local topPrompts = {}          -- Search, Collect, Climb Down - only while he is at the top
+local topPrompts = {}
 local searchPrompt, collectPrompt, climbDownPrompt = nil, nil, nil
 local atTop = false
-local holdArmed = {}           -- [prompt] = the key has been seen let go since its last hold
+local holdArmed = {}
 
 local function PromptHoldMs()
     return Config.TreeClimbConf.PromptHoldMs or 1000
@@ -381,7 +381,7 @@ CreateThread(function()
     end
 end)
 
----o[ Start TreeClimbUp Function ]oo---
+---o[ Start TreeClimbUp Function ]o---
 function StartClimbSequence(treeEntity, treeData)
     if active or not treeEntity then return end
 
@@ -458,7 +458,7 @@ function StartClimbSequence(treeEntity, treeData)
 
         if not active then
             climbing = false
-            return -- something else ended the climb underneath us
+            return
         end
 
         local success = RunGripCheck(step)
@@ -472,7 +472,7 @@ function StartClimbSequence(treeEntity, treeData)
 
         if success == nil then
             climbing = false
-            return -- the climb was ended while the check was on screen
+            return
         end
 
         if success == "unavailable" then
@@ -505,7 +505,7 @@ function StartClimbSequence(treeEntity, treeData)
         local lastFrame = GetGameTimer()
         while active and currentHeight < maxSteps do
             Wait(0)
-            if not active then break end -- let go while asleep: do not re-attach him
+            if not active then break end
             local now = GetGameTimer()
             local dt = math.min((now - lastFrame) / 1000, 0.1)
             lastFrame = now
@@ -525,7 +525,7 @@ function StartClimbSequence(treeEntity, treeData)
         local settleUntil = GetGameTimer() + settleMs
         while active and GetGameTimer() < settleUntil do
             Wait(0)
-            TrackClimbAnim(ped) -- the crown pin must not leave the loop restarted
+            TrackClimbAnim(ped)
         end
         if not active then return end
     end
@@ -559,7 +559,7 @@ function StartClimbSequence(treeEntity, treeData)
     end
 
     ---o[ Blend from the climb into the crouch ]o---
-    SetClimbAnim(nil) -- the climb loop is finished with: nothing may put it back now
+    SetClimbAnim(nil)
     PlayTopPose(8.0)
     StopAnimTask(ped, animDict, animName, 8.0)
 
@@ -575,7 +575,7 @@ function StartClimbSequence(treeEntity, treeData)
     local canSearch = true
     local canCollectCoconut = true
     GSC.Notify.Show(Config.Text.ReachedTopOfTreeNotify, 5000)
-    ShowTopPrompts(true) -- the controls, bottom right, until he leaves the crown
+    ShowTopPrompts(true)
     atTop, topRequest = true, nil
 
     GSC.Harvest.WatchTree(treeData.uid)
@@ -584,9 +584,9 @@ function StartClimbSequence(treeEntity, treeData)
 
     while active do
         Wait(0)
-        if not active then break end -- let go while asleep: do not re-attach him
+        if not active then break end
 
-        local request = topRequest -- a pick from the radial menu counts like the prompt
+        local request = topRequest
         topRequest = nil
 
         if canSearch and (HoldCompleted(searchPrompt) or request == "search") then
@@ -626,14 +626,13 @@ function StartClimbSequence(treeEntity, treeData)
 
     ShowTopPrompts(false)
     atTop, topRequest = false, nil
-    GSC.Harvest.WatchTree(nil) -- no longer at the top: stop drawing the fill bar
-    GSC.TreeCamera.SetTopView(false) -- and back to whatever view he came up in
+    GSC.Harvest.WatchTree(nil)
+    GSC.TreeCamera.SetTopView(false)
 end
----oo[ Utility Logics ]oo---
 
 ---oo[ Letting Go Of The Trunk ]oo---
 local function ReleasePedFromTree(ped, placeOnGround)
-    SetClimbAnim(nil) -- off the tree: nothing to put back any more
+    SetClimbAnim(nil)
     if not ped or not DoesEntityExist(ped) then return end
 
     DetachEntity(ped, true, true)
@@ -687,7 +686,7 @@ local function EnsureRecoveredAfterFall(treeEntity, ragdollMs)
 end
 
 ---oo[ The Drop ]oo---
-local fallProtected = false -- the game's own fall damage is held off while he drops
+local fallProtected = false
 
 local function EndFallProtection(ped)
     if not fallProtected then return end
@@ -757,13 +756,13 @@ function HandleFall(ped, treeEntity)
     local conf = Config.TreeClimbConf
     local ragdollMs = math.floor((conf.FallRagdollSeconds or 5.0) * 1000)
 
-    GSC.TreeCamera.StopClimb() -- here, so the camera is cleaned up whoever calls this
+    GSC.TreeCamera.StopClimb()
     GSC.Harvest.WatchTree(nil)
     GSC.TreeCamera.SetTopView(false)
     active = false
     currentHeight = 0
 
-    ReleasePedFromTree(ped, false) -- he is supposed to drop, so no ground snap
+    ReleasePedFromTree(ped, false)
 
     if conf.FallGameDamage ~= true then
         fallProtected = true
@@ -846,7 +845,7 @@ function ClimbDownSequence(ped, treeEntity)
             PinAtHeight(ped, treeEntity, currentHeight)
         else
             AttachAtHeight(ped, treeEntity, currentHeight)
-            TrackClimbAnim(ped) -- keeps the slide looping smoothly through each pin
+            TrackClimbAnim(ped)
         end
     end
 
@@ -902,7 +901,7 @@ CreateThread(function()
             sleep = 250
         elseif not GSC.Trees.AnySpawned() then
             nearestTree, treeData = nil, nil
-            sleep = 1500 -- no trees streamed in at all, nothing can be in reach
+            sleep = 1500
         else
             local now = GetGameTimer()
 
@@ -932,7 +931,7 @@ CreateThread(function()
         Wait(sleep)
     end
 end)
----oo[ Test The First Person View Without Climbing (/treeview: admins, checked by the server) ]oo---
+---oo[ Test The First Person View Without Climbing ]oo---
 RegisterNetEvent('gsc_kassippu:client:adminCommand')
 AddEventHandler('gsc_kassippu:client:adminCommand', function(name)
     if name ~= 'treeview' then return end
@@ -956,9 +955,9 @@ end)
 
 ---oo[ Public State ]oo---
 
----o[ For GSC.Radial: climb the tree in reach, or what to do up in its crown ]o---
+---o[ For GSC.Radial ]o---
 function Climb.RadialActions()
-    if not (GSC.Radial ~= nil and GSC.Radial.Owns("tree")) then return nil end -- the tree is on its key prompts (Config.Radial.Places.tree)
+    if not (GSC.Radial ~= nil and GSC.Radial.Owns("tree")) then return nil end
     local P, R = Config.PromptsTxt, Config.Text.Radial or {}
 
     if active and atTop then

@@ -1,12 +1,12 @@
 local Upkeep = GSC.module('Upkeep')
 
-local Online = {} -- [src] = { charid, account } of the character he plays
+local Online = {}
 
 local function Conf()
     return Config.Upkeep or {}
 end
 
----o[ The ids a still or crate can be owned by: the character, and the account (very old stills) ]o---
+---o[ The ids a still or crate can be owned by ]o---
 local function IdsOf(Character)
     if not Character then return nil end
     return { charid = Shared.CharId(Character), account = Character.identifier and tostring(Character.identifier) or nil }
@@ -14,8 +14,6 @@ end
 
 local function Query(sql, params)
     local p = promise.new()
-    -- the last argument makes oxmysql call back on an error too (rows = nil): without it a failed
-    -- query never answers and this thread (the whole upkeep sweep) waits forever
     exports.oxmysql:execute(sql, params or {}, function(rows, err)
         if err then print("^1[Database]^7 " .. tostring(err)) end
         p:resolve(rows or {})
@@ -98,7 +96,7 @@ function Upkeep.Sweep()
         seen[tostring(row.owner)] = tonumber(row.last_seen) or 0
     end
 
-    ---o[ An owner with no stamp yet (from before this existed) starts counting today: nothing goes on day one ]o---
+    ---o[ An owner with no stamp yet starts counting today ]o---
     local unstamped = {}
     for owner in pairs(owners) do
         if not seen[owner] then unstamped[#unstamped + 1] = owner end
@@ -128,7 +126,7 @@ function Upkeep.Sweep()
     return cleared
 end
 
----o[ Stamp who is online every 15 min, sweep every CheckHours (first a few minutes after a start, once all is loaded) ]o---
+---o[ Stamp who is online every 15 min, sweep every CheckHours ]o---
 CreateThread(function()
     while GetResourceState('oxmysql') ~= 'started' do Wait(1000) end
     Wait(10000)

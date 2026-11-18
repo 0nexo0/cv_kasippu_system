@@ -81,7 +81,6 @@ function Mash.UseCoconut(src, stacks, usageMl)
             if remaining <= 0 then return end
 
             if stack.ml <= remaining then
-                -- the empty pot only comes back for a pot that was really taken
                 if exports.vorp_inventory:subItemById(src, stack.id, nil, nil, 1) and isPot then
                     exports.vorp_inventory:addItem(src, conf.RequiredPotItem, 1)
                 end
@@ -114,7 +113,7 @@ end
 
 ---o[ Recipe cards: use one from the satchel to read its recipe ]o---
 if (Config.RecipeBook or {}).CardsUsable ~= false then
-    local cardRecipe = {} -- [card item] = the recipe it teaches (first one, if two share a card)
+    local cardRecipe = {}
     local keys = {}
     for key in pairs(Config.Recipes) do keys[#keys + 1] = key end
     table.sort(keys)
@@ -193,7 +192,6 @@ local function SpiritLookup()
 
     for _, key in ipairs(keys) do
         local recipe = Config.Recipes[key]
-        -- best grade first, so an untagged bottle always reads the same (pairs order is random)
         local qualities = {}
         for quality in pairs(recipe.rewards or {}) do qualities[#qualities + 1] = quality end
         table.sort(qualities, function(a, b) return (GRADE_RANK[a] or 0) > (GRADE_RANK[b] or 0) end)
@@ -337,7 +335,7 @@ function Mash.Evaluate(recipeKey, stored, coconutStacks, now)
         return result
     end
 
-    ---o[ The batch size: one of the batch ingredient (water) per batch ]o---
+    ---o[ The batch size ]o---
     local maxBatch = conf.MaxBatch or 3
     local batchIng = BatchIngredient(recipe)
     local batches = 1
@@ -435,7 +433,7 @@ function Mash.Evaluate(recipeKey, stored, coconutStacks, now)
     local spiritBonus = totals.spirit > 0 and (spiritBonusSum / totals.spirit) or 0.0
 
     result.scoreMod = math.floor(fruitBonus - stalePenalty + spiritBonus + 0.5)
-    result.fruit = fruitBonus -- kept apart for the tasting notes (GSC.Tasting): fruity / stale fruit
+    result.fruit = fruitBonus
     result.stale = stale
 
     ---o[ What it makes ]o---
@@ -502,7 +500,7 @@ end
 
 ---oo[ The Recipe Book's Live Preview ]oo---
 local LastPreview = {} -- [src] = game timer of their last ask
-local LastBookOpen = {} -- [src] = game timer of their last openBook
+local LastBookOpen = {}
 
 RegisterServerEvent('gsc_kassippu:server:previewMix')
 AddEventHandler('gsc_kassippu:server:previewMix', function(uid, recipeKey)
@@ -522,7 +520,7 @@ AddEventHandler('gsc_kassippu:server:previewMix', function(uid, recipeKey)
         return
     end
 
-    GSC.Distillery.RegisterStash(uid) -- after a restart vorp only answers for a registered id
+    GSC.Distillery.RegisterStash(uid)
     exports.vorp_inventory:getCustomInventoryItems(uid, function(stored)
         local stacks = (tonumber(Config.Recipes[recipeKey].coconutMl) or 0) > 0 and Mash.CoconutStacks(_source) or nil
         local result = Mash.Evaluate(recipeKey, stored, stacks, os.time())

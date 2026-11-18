@@ -1,15 +1,15 @@
-GSC.module('Zones') -- registered for /gscmodules; it has no public functions
+GSC.module('Zones')
 
 local GuardConf = Config.GuardSpawnConf
 local VORPcore = exports.vorp_core:GetCore()
 
 local activeAlertBlip = nil
 
-local currentZoneKey = nil   -- Zone the player is currently standing in (nil = outside)
-local lastMoveWarn = nil     -- Last movement warning shown ("loud"/"crouch"/nil)
-local fallLoudUntil = 0      -- A fall is brief; it keeps the yard angry until this timestamp
-local lastEnterNotify = {}   -- [zoneKey] = when the entry notice was last shown
-local lastNoiseNotify = 0    -- when "you are making noise" was last shown
+local currentZoneKey = nil
+local lastMoveWarn = nil
+local fallLoudUntil = 0
+local lastEnterNotify = {}
+local lastNoiseNotify = 0
 
 local function devPrint(msg)
     Shared.Debug("^1[Zone Debug]^7 " .. tostring(msg))
@@ -62,11 +62,11 @@ CreateThread(function()
     local armed = false
 
     while true do
-        if currentZoneKey then -- whether a shot opens fire is GuardSpawnConf.FireOn.Gunshot
+        if currentZoneKey then
             local ped = PlayerPedId()
             local now = GetGameTimer()
 
-            ---o[ A shot is a one-frame flag: watch every frame, but only with a gun out ]o---
+            ---o[ A shot is a one-frame flag ]o---
             if (now - armedCheckedAt) >= 250 then
                 armedCheckedAt = now
                 armed = IsPlayerArmed(ped)
@@ -135,20 +135,18 @@ CreateThread(function()
 
     Wait(2000)
 
-    ---o[ Each yard may set its own guard distances; the rest use the global ones ]o---
+    ---o[ Each yard may set its own guard distances ]o---
     local ranges = {} -- [zoneIndex] = { spawnSq, despawnSq }
     for i, zoneData in ipairs(Config.TreeZones) do
         local spawn = zoneData.spawnDistance or GuardConf.SpawnDistance or 200.0
         local despawn = zoneData.despawnDistance or GuardConf.DespawnDistance or 260.0
 
-        -- despawn must sit well outside spawn, or a player on the line thrashes the shift in and out
         if despawn < spawn + 20.0 then
             devPrint(string.format("%s: despawnDistance %.0f is too close to spawnDistance %.0f - using %.0f",
                 zoneData.name, despawn, spawn, spawn + 20.0))
             despawn = spawn + 20.0
         end
 
-        -- under the yard's own corner distance the guards would appear inside the yard, in view
         local corner = zoneData.size and math.sqrt(zoneData.size.x ^ 2 + zoneData.size.y ^ 2) or 0.0
         if spawn < corner then
             devPrint(string.format("%s: spawnDistance %.0f is inside the yard (corner at %.0f) - guards will pop in",
@@ -158,7 +156,7 @@ CreateThread(function()
         ranges[i] = { spawnSq = spawn ^ 2, despawnSq = despawn ^ 2 }
     end
 
-    local leftZoneAt = {} -- [zoneIndex] = when the player went out of range
+    local leftZoneAt = {}
     local graceMs = math.max(0, (GuardConf.DespawnGraceSeconds or 10)) * 1000
 
     devPrint("Zone engine started")
@@ -314,7 +312,6 @@ CreateThread(function()
                 lastMoveWarn = nil
             end
 
-            -- within a yard's spawn range: look again soon, so its shift is on the map within a second
             if inSpawnRange then sleep = math.min(sleep, 1000) end
         end
 
@@ -325,7 +322,7 @@ end)
 ---o[ SHERIFF DISPATCH MARKER ]o---
 local alertRouteOn = false
 local alertMarkerAt = nil
-local alertMarkerId = 0 -- bumped per dispatch so an old timer cannot clear a newer marker
+local alertMarkerId = 0
 
 local function ClearDispatchMarker()
     if activeAlertBlip and DoesBlipExist(activeAlertBlip) then
@@ -403,7 +400,7 @@ CreateThread(function()
         Wait(sleep)
     end
 end)
----o[ TOGGLE DEBUG ZONES (/toggledebugzones: admins, checked by the server) ]o---
+---o[ TOGGLE DEBUG ZONES ]o---
 RegisterNetEvent('gsc_kassippu:client:adminCommand')
 AddEventHandler('gsc_kassippu:client:adminCommand', function(name)
     if name ~= 'toggledebugzones' then return end

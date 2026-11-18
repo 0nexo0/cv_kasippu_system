@@ -1,7 +1,4 @@
 ---o[ Coconut Yards ]o---
--- Restricted ground the trees stand in. Copy a block to add a yard (restart after changing).
--- A yard only needs name, label, coords and size: without guardPosts the guards are spread over it for you
--- (AutoPostLayout round the fence + an AutoPostInner grid inside, see "Auto posts" below).
 Config.TreeZones = {
     {
         name   = "armadillo_coconut_zone",
@@ -10,21 +7,14 @@ Config.TreeZones = {
         size   = { x = 70.0, y = 70.0 },            -- HALF the width / depth in metres (70 = a 140 m yard)
 
         ---o[ When this yard's guards are on the map ]o---
-        -- Keep spawnDistance above the furthest post: corner fence posts sit at about (size + AutoPostMargin) x 1.41
-        -- from the centre (here (70 + 4) x 1.41 = 105 m), or guards pop in where the player can see them.
         spawnDistance   = 200.0, -- metres from the centre: every guard appears (nil = GuardSpawnConf.SpawnDistance)
-        despawnDistance = 230.0, -- metres: removed again; at least spawnDistance + 20, or the code forces that (nil = GuardSpawnConf.DespawnDistance)
+        despawnDistance = 230.0, -- metres: removed again
 
-        -- innerPosts = 3,       -- optional: this yard's own inner grid (3 = 9 posts inside); nil = AutoPostInner
-
-        ---o[ Hand-placed posts (optional) - uncomment to place guards yourself instead of the auto layout ]o---
-        -- heading 0 = N, 90 = W, 180 = S, 270 = E. range = his fire range (nil = DefaultGuardRange).
-        -- Optional per post: scenario = "WORLD_HUMAN_..." (always that), patrolPoints = { vector3, ... } (walks them).
-        -- guardPosts = {
+        ---o[ Hand-placed posts (optional, replaces the auto layout) ]o---
+        -- innerPosts = 3, -- this yard's own inner grid (nil = AutoPostInner)
+        -- guardPosts = {  -- heading 0 = N, 90 = W, 180 = S, 270 = E; range = fire range
         --     { coords = vector3(-3111.24, -3553.12, 9.67), heading = 180.0, range = 22.0 },
         --     { coords = vector3(-3117.69, -3568.91, 11.07), heading =  90.0, range = 22.0 },
-        --     { coords = vector3(-3137.49, -3580.61, 11.44), heading =   0.0, range = 22.0 },
-        --     { coords = vector3(-3152.13, -3558.73, 11.98), heading = 270.0, range = 22.0 },
         -- },
 
         reinforceSpawns = { -- only with AtPostsOnly = false: where replacements walk in from
@@ -48,13 +38,12 @@ Config.GuardSpawnConf = {
     AlertBlipName     = "blip_ambient_bounty_hunter",
     AlertCoolDown     = 10000,                -- ms between alarms
 
-    ---o[ Spawning - a yard's own spawnDistance / despawnDistance win over these ]o---
+    ---o[ Spawning ]o---
     SpawnDistance       = 200.0, -- metres from the yard centre: guards appear
     DespawnDistance     = 260.0, -- metres: guards removed (keep 20+ above SpawnDistance)
     DespawnGraceSeconds = 10,    -- player must stay out this long first (sec)
     AtPostsOnly         = true,  -- every guard appears on his own post, all at once, and stands there
     AlwaysStaffed       = true,  -- no empty yard: a killed guard is back after RespawnSeconds, and once
-                                 -- nobody is within despawnDistance the whole shift is back on duty
     RespawnSeconds      = 120,   -- a killed guard is back on his post after this (sec)
     BodyCleanupSeconds  = 45,    -- a body is removed after this (sec)
 
@@ -63,11 +52,9 @@ Config.GuardSpawnConf = {
     AutoPostLayout  = 8,    -- fence posts: 4 = middle of each side, 8 = sides + corners (all face the middle)
     AutoPostMargin  = 4.0,  -- metres outside the boundary for the fence posts
     AutoPostInner   = 2,    -- inside the yard: an N x N grid facing the middle (2 = 4 posts, 3 = 9, 0 = none).
-                            -- Keep the gap between posts under Detection.SightRange: gap = size x 2 / N
     GuardsPerZone   = 0,    -- auto posts only: men on duty (0 = every post manned; fewer = random posts each shift)
 
-    ---o[ What makes them open fire - as soon as a guard sees or hears it ]o---
-    -- false = it only makes the yard suspicious (Suspicion below). Shooting a guard always starts a fight.
+    ---o[ What makes them open fire ]o---
     FireOn = {
         Running      = true,   -- running or sprinting (Shift) in the yard
         Jumping      = true,   -- jumping in the yard
@@ -77,7 +64,7 @@ Config.GuardSpawnConf = {
         SeenArmed    = true,   -- seen with a gun drawn
         SeenUpright  = true,   -- seen in the yard NOT crouched (walking or standing): only sneaking is safe
         Falling      = true,   -- coming out of a tree
-        TooClose     = "fire", -- inside a guard's range: "fire" = shoot, "warn" = gunpoint first (Warning), false = ignore
+        TooClose     = "fire", -- inside a guard's range: "fire" = shoot, "warn" = gunpoint first
     },
 
     AimAtGuardSeconds        = 0.5,  -- how long a gun must be on a guard
@@ -88,8 +75,6 @@ Config.GuardSpawnConf = {
     LoudMovementNeedsWitness = true, -- running / jumping only count if a guard saw or heard it
     SprintKeyIsLoud          = true, -- false: only the actual running gait counts, not Shift
     CrouchWalkUndetected     = true, -- crouched, no sprint, no jump: not seen, heard or "too close" - the one safe way in.
-                                     -- While true, the settings marked [crouch] only matter for a crouched player who
-                                     -- is also noisy (running, jumping, falling, shooting) or already in a fight.
     LawmenIgnored            = true, -- lawmen are never treated as trespassers
     CalmDownTime             = 30000, -- ms guards keep fighting after the last trespass
 
@@ -133,7 +118,7 @@ Config.GuardSpawnConf = {
         BlipColour     = "BLIP_MODIFIER_MP_COLOR_8", -- red
     },
 
-    ---o[ ADVANCED - suspicion: what is not in FireOn makes the yard look and search ]o---
+    ---o[ ADVANCED ]o---
     Suspicion = {
         Enabled        = true,
         Max            = 100.0,

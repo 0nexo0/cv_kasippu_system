@@ -1,25 +1,21 @@
 local Buyers = GSC.module('Buyers')
 
----oo[ The buyers, on the client: their NPCs, the Talk prompt, the ledger ]oo---
--- The server keeps the prices, the demand and the trust (features/market/server/market.lua).
--- Here: a local (not networked) NPC for each buyer within SpawnDistance, a prompt to talk to
--- him, and the ledger page. Far from every buyer the loop sleeps 2 s.
+---oo[ The buyers, on the client ]oo---
 
-local campIndex = nil   -- the travelling buyer's camp (the server says)
+local campIndex = nil
 local peds = {}         -- [buyer id] = ped
 local blips = {}        -- saloon blips
 local ledgerOpen = false
 
 local PromptGroup = CreateVarString(10, 'LITERAL_STRING', "Buyer")
 local TalkPrompt = nil
-local groupLabels = {}  -- [buyer id] = the prompt group's title, made once
+local groupLabels = {}
 
 local function Conf()
     return Config.Market or {}
 end
 
----o[ Every buyer the client knows of: { id, name, coords, heading, model } - built once, again
---     only when the travelling buyer moves (never per frame) ]o---
+---o[ Every buyer the client knows of ]o---
 local cachedList = nil
 
 local function List()
@@ -121,14 +117,12 @@ local function TalkJustCompleted()
 end
 
 ---oo[ The loop: spawn near, despawn far, prompt when close ]oo---
--- Far from every buyer it wakes every 2 s; within half the spawn distance every 0.5 s. At a
--- buyer only the prompt is drawn each frame, and the distance is rechecked every 250 ms.
 ---o[ For GSC.Radial: is the ledger holding the screen? ]o---
 function Buyers.IsBusy()
     return ledgerOpen
 end
 
----o[ For GSC.Radial: talk to the buyer in reach (the same rule and server event as the Talk prompt) ]o---
+---o[ For GSC.Radial ]o---
 function Buyers.RadialActions()
     if not (GSC.Radial ~= nil and GSC.Radial.Owns("buyer")) then return nil end -- the buyers are on their Talk prompt
     local conf = Conf()
@@ -165,7 +159,7 @@ local function AtBuyer(buyer, talkAt)
             if #(GetEntityCoords(PlayerPedId()) - buyer.coords) > talkAt then return end
         end
         if (GSC.Radial ~= nil and GSC.Radial.Owns("buyer")) then
-            GSC.Radial.Hint("buyer") -- Talk is in the F2 menu (Buyers.RadialActions): just the tag, no prompt box
+            GSC.Radial.Hint("buyer")
         else
             UiPromptSetActiveGroupThisFrame(PromptGroup, label)
         end
@@ -173,7 +167,7 @@ local function AtBuyer(buyer, talkAt)
             TriggerServerEvent('gsc_kassippu:server:buyerOpen', buyer.id)
             return
         end
-        Wait((GSC.Radial ~= nil and GSC.Radial.Owns("buyer")) and 100 or 0) -- menu mode: only the F2 tag, no prompt box
+        Wait((GSC.Radial ~= nil and GSC.Radial.Owns("buyer")) and 100 or 0)
     end
 end
 
@@ -216,7 +210,7 @@ AddEventHandler('gsc_kassippu:client:buyerCamp', function(index)
     if nextIndex == campIndex then return end
     campIndex = nextIndex
     cachedList = nil
-    if peds.traveller then Despawn("traveller") end -- he moved on: the next pass spawns him at the new camp
+    if peds.traveller then Despawn("traveller") end
 end)
 
 RegisterNetEvent('gsc_kassippu:client:buyerLedger')

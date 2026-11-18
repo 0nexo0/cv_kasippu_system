@@ -22,7 +22,6 @@ Config.CrateAging = {
     SelectedLift    = 0.05,                    -- the selected bottle stands this much higher
 
     ---o[ Tiers - richest first, minutes of maturity ]o---
-    -- key is looked up in a recipe's rewards[grade].agedItems
     Tiers = {
         { key = "FINE",   minutes = 120, label = "Fine" },   -- 2 h of maturity (1 h with good care)
         { key = "MELLOW", minutes = 60,  label = "Mellow" }, -- 1 h
@@ -30,7 +29,6 @@ Config.CrateAging = {
     },
 
     ---o[ Climate - read where the crate is placed ]o---
-    -- ageRate = how fast bottles mature, keepRate = how long before they turn. Also used by fermentation.
     Climate = {
         Enabled = true,
         Bands = { -- coldest first: the first band the temperature (C) is `below` wins
@@ -48,7 +46,7 @@ Config.CrateAging = {
     ---o[ Care - the crate asks for an activity ]o---
     TendEverySeconds  = 300,   -- how often an activity comes due (sec)
     TendWindowSeconds = 60,    -- how long it can be answered (sec)
-    TendMinSeconds    = 1.5,   -- a job won sooner than this after it started is not a real game: counted as failed (anti-cheat)
+    TendMinSeconds    = 1.5, -- a job won sooner than this after it started is not a real game: counted as failed
     PassBonus         = 6.0,   -- care every bottle gains for a pass
     FailPenalty       = 4.0,   -- care lost for a failed minigame
     MissPenalty       = 10.0,  -- care lost for ignoring it
@@ -64,15 +62,12 @@ Config.CrateAging = {
     NotifyOwnerAway   = true,  -- tell the owner an activity is due wherever they are
 
     ---o[ Souring ]o---
-    SpoilMinutes      = 180,   -- real minutes before a bottle turns (Mild cellar). Must be > Fine minutes / (ageRate x keepRate) in every band: Hot needs > 160
+    SpoilMinutes      = 180, -- real minutes before a bottle turns
 
     ---o[ Minigames ]o---
-    -- "builtin" = the script's own minigames, "syn_minigame" = syn's task bar
     MinigameProvider  = "builtin",
 
     ---o[ Activities ]o---
-    -- weight = how often it comes up, bonus = overrides PassBonus, item = consumed if set
-    -- Minigame types: dial, bar, pins, hold, sequence, reach. All take time (sec) and strikes (misses allowed).
     Activities = {
         {
             key      = "TURN",
@@ -102,8 +97,6 @@ Config.CrateAging = {
     },
 
     ---o[ Hazards - sometimes replace an activity, target ONE bottle ]o---
-    -- window = seconds to answer, targetBonus = extra care on a pass,
-    -- failTarget / missTarget = care lost, breakOnMiss = bottle lost if ignored
     HazardChance = 0.35, -- chance a window is a hazard (0-1)
     Hazards = {
         {

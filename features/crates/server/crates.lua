@@ -3,13 +3,13 @@ local Crates = GSC.module('Crates')
 ---o[ State ]o---
 local CrateList = {}
 
-local CrateWatchers = {} -- [uid] = { [src] = owner id of the character stood there }
+local CrateWatchers = {}
 local WatchedCrate = {}  -- [src] = uid
-local PickAttempts = {}  -- [src] = { uid, started, startedMs } while a lockpick minigame is running
-local PickCooldown = {}  -- [src] = os.time() his next attempt is allowed
-local TendAttempts = {}  -- [src] = { uid, opened, started (GetGameTimer ms) } while a crate job minigame is running
-local CratesLoaded = false  -- true once the crates came back from the database
-local LastCrateRequest = {} -- [src] = os.time() of their last full-sync request
+local PickAttempts = {}
+local PickCooldown = {}
+local TendAttempts = {}
+local CratesLoaded = false
+local LastCrateRequest = {}
 
 local TIER_ORDER = { NORMAL = 1, GOOD = 2, PERFECT = 3 }
 
@@ -33,7 +33,7 @@ local function RecipeLabel(recipeKey, fallback)
     return recipe and recipe.label or fallback or tostring(recipeKey)
 end
 
----o[ What a bottle is called: "Strong Kassippu", or just the recipe ]o---
+---o[ What a bottle is called ]o---
 local function BottleName(bottle)
     local meta = bottle.meta or {}
     return meta.productLabel or RecipeLabel(bottle.recipe, bottle.item)
@@ -109,12 +109,6 @@ local function GetFreshLookup()
     if FreshLookup then return FreshLookup end
     FreshLookup = {}
 
-    -- First runs before second runs: an untagged bottle is the spirit it was distilled as,
-    -- not the second run that happens to share its item (local_kasippu is Kassippu, not Arrack).
-    -- Lowest grade first: when every grade shares one item (local_kasippu), a bottle that carries
-    -- no grade of its own (a shop's, another script's) is taken as the poorest it could be - never
-    -- as Perfect, which would let it age into the best aged items. Distinct items per grade are
-    -- unaffected: each item still maps to its own grade.
     local recipeKeys = {}
     for key in pairs(Config.Recipes) do recipeKeys[#recipeKeys + 1] = key end
     table.sort(recipeKeys, function(a, b)
@@ -176,7 +170,7 @@ function Crates.FreshBottleMetadata(recipeKey, quality, strengthKey)
     }
 end
 
----o[ For the tasting: the recipe and grade of a satchel stack (fresh, aged or untagged), or nil ]o---
+---o[ For the tasting ]o---
 function Crates.BottleRecipe(item)
     local meta = item and item.metadata or {}
     if meta.soured then return nil end
@@ -234,7 +228,7 @@ local function EffectiveTier(crate, bottle, now)
         end
     end
 
-    ---o[ Aging can't be undone: never below the richest tier this bottle has reached (TickCrate sets bottle.best) ]o---
+    ---o[ Aging can't be undone ]o---
     local best = TierIndexByKey(bottle.best)
     if best and (not index or best < index) then index = best end
 
@@ -247,7 +241,7 @@ local function Outlook(crate, bottle, now)
     local tiers = Conf().Tiers
     local minutes = MaturityMinutes(crate, bottle, now)
     local currentIndex = EffectiveTier(crate, bottle, now)
-    if currentIndex == 1 then return 1.0, nil, nil end -- at the richest tier (by time or by care): full bar, nothing ahead
+    if currentIndex == 1 then return 1.0, nil, nil end
     local spoilLeft = SpoilSeconds(crate) - AgeSeconds(bottle, now)
 
     local floor, ahead = 0, {}
@@ -275,7 +269,7 @@ local function Outlook(crate, bottle, now)
     return progress, nil, nil
 end
 
----o[ Tasting (Config.Tasting): is this bottle's grade and taint known yet? ]o---
+---o[ Tasting ]o---
 local function HidingUntasted()
     local t = Config.Tasting
     return t and t.Enabled and t.HideUntasted
@@ -358,9 +352,7 @@ local function ResolveTakenBottle(crate, bottle, now)
     return agedItem or bottle.item, metadata, string.format(Config.Text.CrateTakenAged, shownLabel)
 end
 
----o[ A fresh bottle as it would come out of a crate: at a tier, or turned (admin give) ]o---
--- state: a tier key from Config.CrateAging.Tiers, or "TURNED". Runs through ResolveTakenBottle
--- so the result is exactly what a real crate hands back. nil when the crate is switched off.
+---o[ A fresh bottle as it would come out of a crate ]o---
 function Crates.AgedBottle(item, meta, recipeKey, quality, state)
     local conf = Conf()
     if not conf or not conf.Enabled then return nil end
@@ -470,7 +462,7 @@ local function Attention(crate, now)
 
     for _, bottle in ipairs(crate.bottles) do
         if not bottle.soured then
-            ---o[ Close to turning, and nothing better to wait for (Outlook has no next tier in time) ]o---
+            ---o[ Close to turning, and nothing better to wait for ]o---
             if AgeSeconds(bottle, now) > spoil * 0.8 then
                 local _, nextIn = Outlook(crate, bottle, now)
                 if not nextIn then return "turning" end
@@ -520,11 +512,11 @@ function Crates.LoadCratesFromDB()
     if not Conf() or not Conf().Enabled then return end
 
     exports.oxmysql:execute('SELECT * FROM gsc_kassippu_crates', {}, function(results, err)
-        ---o[ Failed: say so. CratesLoaded stays false, so no crate is set down that the limit could not count ]o---
+        ---o[ Failed ]o---
         if err then
             return print("^1[Error]^7 Could not load aging crates from gsc_kassippu_crates - no crates this session: " .. tostring(err))
         end
-        CratesLoaded = true -- from now on a client's own request is answered (requestCrates)
+        CratesLoaded = true
         if not results then return end
 
         local now = os.time()
@@ -576,7 +568,7 @@ function Crates.LoadCratesFromDB()
     end, GetCurrentResourceName(), true)
 end
 
----o[ A client asks for every crate itself (its scripts started after the server's load broadcast) ]o---
+---o[ A client asks for every crate itself ]o---
 RegisterServerEvent('gsc_kassippu:server:requestCrates')
 AddEventHandler('gsc_kassippu:server:requestCrates', function()
     local _source = source
@@ -596,7 +588,7 @@ AddEventHandler("vorp:SelectedCharacter", function(source)
     local _source = source
     if not Conf().Enabled then return end
 
-    Citizen.SetTimeout(4000, function()
+    SetTimeout(4000, function()
         SyncAllCratesTo(_source)
         SyncMyCratesTo(_source)
     end)
@@ -692,7 +684,7 @@ local function SyncCrateGauge(uid, now)
             slot.peak = (index == 1) or nil
             slot.turnsIn = math.max(0, math.floor(spoil - AgeSeconds(bottle, now)))
             slot.progress, slot.nextIn, slot.nextLabel = Outlook(crate, bottle, now)
-            slot.turning = (slot.turnsIn < spoil * 0.2 and not slot.nextIn) or nil -- not while a better tier is still coming
+            slot.turning = (slot.turnsIn < spoil * 0.2 and not slot.nextIn) or nil
 
             careSum = careSum + (bottle.care or 0.0)
             careCount = careCount + 1
@@ -792,12 +784,12 @@ end
 
 ---oo[ Placement ]oo---
 
----o[ The item only starts the ghost - it is taken when the crate is set down ]o---
+---o[ The item only starts the ghost ]o---
 if Config.CrateAging.Enabled then
     exports.vorp_inventory:registerUsableItem(Config.CrateAging.ItemName, function(data)
         local _source = data.source
         local Character = Shared.GetChar(_source)
-        if not Character or not CratesLoaded then return end -- before the load the limit and spot checks see no crates
+        if not Character or not CratesLoaded then return end
         if AtCrateLimit(_source, Character) then return end -- don't start a ghost he can't set down
 
         exports.vorp_inventory:closeInventory(_source)
@@ -819,7 +811,7 @@ RegisterServerEvent('gsc_kassippu:server:placeCrate')
 AddEventHandler('gsc_kassippu:server:placeCrate', function(coords, heading, climate)
     local _source = source
     local conf = Conf()
-    if not conf.Enabled or not CratesLoaded then return end -- before the load the limit and spot checks see no crates
+    if not conf.Enabled or not CratesLoaded then return end
 
     local Character = Shared.GetChar(_source)
     if not Character or type(coords) ~= 'table' and type(coords) ~= 'vector3' then return end
@@ -838,7 +830,7 @@ AddEventHandler('gsc_kassippu:server:placeCrate', function(coords, heading, clim
         end
     end
 
-    ---o[ Checked again here: the item check above is only a courtesy, this is the one a client can't skip ]o---
+    ---o[ Checked again here ]o---
     if AtCrateLimit(_source, Character) then return end
 
     if exports.vorp_inventory:getItemCount(_source, nil, conf.ItemName) < 1 then return end
@@ -871,7 +863,7 @@ AddEventHandler('gsc_kassippu:server:placeCrate', function(coords, heading, clim
 
     local climateLine = ClimateText(crate)
     GSC.Notify.SendObjective(_source, Config.Text.CratePlaced .. (climateLine and (" " .. climateLine) or ""), 6000)
-    TriggerClientEvent('gsc_kassippu:client:barrelAnim', _source, "place_crate") -- the shared set-down animation (Config.AnimConf.Actions)
+    TriggerClientEvent('gsc_kassippu:client:barrelAnim', _source, "place_crate")
 
     Shared.Debug(string.format("^2[Crate]^7 (ID: %s) %s placed %s (%s)", _source, Character.firstname, uid,
         crate.band and crate.band.key or "no climate"))
@@ -942,7 +934,6 @@ AddEventHandler('gsc_kassippu:server:storeCrateBottle', function(uid)
         return GSC.Notify.Send(_source, Config.Text.CrateNoBottle, 3000)
     end
 
-    -- not taken from the satchel: it must not be laid down too (that would be a copy)
     if not exports.vorp_inventory:subItemById(_source, chosen.id, nil, nil, 1) then
         return GSC.Notify.Send(_source, Config.Text.CrateNoBottle, 3000)
     end
@@ -1064,19 +1055,19 @@ local function ApplyCare(crate, amount, targetAmount)
     end
 end
 
----o[ Open the next window: a routine activity, or now and then a hazard ]o---
+---o[ Open the next window ]o---
 local function OpenWindow(crate, now)
     local conf = Conf()
     local hazards = conf.Hazards or {}
     local activities = conf.Activities or {}
 
-    ---o[ Bottles that can still gain: not turned and not yet at the richest tier ]o---
+    ---o[ Bottles that can still gain ]o---
     local candidates = {}
     for _, bottle in ipairs(crate.bottles) do
         if not bottle.soured and EffectiveTier(crate, bottle, now) ~= 1 then candidates[#candidates + 1] = bottle end
     end
 
-    ---o[ Nothing left to gain: skip this check (no job, no hazard), the clock moves on ]o---
+    ---o[ Nothing left to gain ]o---
     if #candidates == 0 then
         crate.tendIndex = crate.tendIndex + 1
         return nil
@@ -1100,7 +1091,7 @@ local function OpenWindow(crate, now)
     return entry, isHazard
 end
 
----o[ The player starts on the job: the server times the game from here ]o---
+---o[ The player starts on the job ]o---
 RegisterServerEvent('gsc_kassippu:server:startTendCrate')
 AddEventHandler('gsc_kassippu:server:startTendCrate', function(uid)
     local _source = source
@@ -1316,7 +1307,7 @@ AddEventHandler('gsc_kassippu:server:pickCrateLockResult', function(uid, passed)
 end)
 
 ---oo[ The Crate Clock ]oo---
----o[ For GSC.Upkeep: who owns a crate, and taking away an owner's crates (he has been gone too long) ]o---
+---o[ For GSC.Upkeep ]o---
 function Crates.Owners()
     local owners = {}
     for _, crate in pairs(CrateList) do
@@ -1339,8 +1330,6 @@ function Crates.ExpireOwner(owner)
     return removed
 end
 
--- A crate nobody stands at is ticked this often (sec): tiers and souring move in minutes, and 360 crates
--- x 12 bottles every second was the heaviest work on the server thread
 local QUIET_TICK = 5
 
 local function TickCrate(uid, crate, now)
@@ -1409,7 +1398,6 @@ local function TickCrate(uid, crate, now)
                         local lastIndex = TierIndexByKey(bottle.tier)
 
                         ---o[ Keep the richest tier reached (saved with the bottles JSON) ]o---
-                        -- EffectiveTier never goes below bottle.best, so a different key here is always a step up
                         if tier and bottle.best ~= tier.key then
                             bottle.best = tier.key
                             changed = true
@@ -1443,7 +1431,7 @@ local function TickCrate(uid, crate, now)
     SyncCrateGauge(uid, now)
 end
 
-Citizen.CreateThread(function()
+CreateThread(function()
     while true do
         if not Conf().Enabled or next(CrateList) == nil then
             Wait(5000)
@@ -1451,7 +1439,7 @@ Citizen.CreateThread(function()
             Wait(1000)
             local now = os.time()
             for uid, crate in pairs(CrateList) do
-                ---o[ Watched: every second (its card counts down). The rest: every QUIET_TICK s, spread over those seconds ]o---
+                ---o[ Watched ]o---
                 if not crate.nextTick then crate.nextTick = now + math.random(0, QUIET_TICK - 1) end
                 if CrateWatchers[uid] or now >= crate.nextTick then
                     crate.nextTick = now + QUIET_TICK

@@ -1,14 +1,11 @@
 local PushGame = GSC.module('PushGame')
 
 ---oo[ Hold The Heat as a game (Config.HeatSkill.Game) ]oo---
--- Panel = true: "The Firebox" NUI panel (drag splits into the fire, hold the valve, pull the vent lever).
--- Panel = false: world prompts ([E] stoke, [R] hold to cool, [V] vent, [T] trouble).
--- Either way the server moves the heat; this only says "stoke" and "tap open / shut".
 
-local running = false  -- this module holds the still's prompts this frame
-local tapUid = nil     -- the still whose tap this player holds open
+local running = false
+local tapUid = nil
 local lastStoke = 0
-local group = GetRandomIntInRange(0, 0xffffff) -- the prompt group (the same way climb.lua makes one)
+local group = GetRandomIntInRange(0, 0xffffff)
 local groupLabel = nil
 local StokePrompt, CoolPrompt, VentPrompt, TroublePrompt, OpenPrompt
 local troubleText = nil
@@ -16,9 +13,9 @@ local troubleText = nil
 ---o[ The panel ]o---
 local panelOpen = false
 local panelUid = nil
-local suspended = false -- an incident's minigame has the screen; the panel comes back after it
-local dismissed = {}    -- [uid] = true after Esc: no auto-open again until the player walks off and back
-local lastReading = {}  -- [uid] = { heat, gauge } the last reading the server sent
+local suspended = false
+local dismissed = {}
+local lastReading = {}
 
 local function Conf()
     local game = Config.HeatSkill and Config.HeatSkill.Enabled and Config.HeatSkill.Game
@@ -36,10 +33,6 @@ end
 
 function PushGame.Running()
     return running or panelOpen
-end
-
-function PushGame.PanelOpen()
-    return panelOpen
 end
 
 local function Pressed(key)
@@ -96,7 +89,7 @@ local function Stoke(uid)
     return true
 end
 
----o[ The still in FINAL_PUSH this player stands at and may work (relaxed = ignore what holds the screen) ]o---
+---o[ The still in FINAL_PUSH this player stands at and may work ]o---
 local function Here(relaxed)
     if not Conf() or not GSC.Barrels or not GSC.Barrels.Here then return nil end
     local uid, stage = GSC.Barrels.Here()
@@ -161,17 +154,17 @@ local function ClosePanel()
     SendNUIMessage({ action = "pushPanel", open = false })
 end
 
----o[ For GSC.UiGuard: is the Firebox up (not stepped aside for a minigame), and take it down ]o---
+---o[ For GSC.UiGuard ]o---
 function PushGame.IsPanelOpen()
     return panelOpen and not suspended
 end
 
 function PushGame.Close()
-    if panelUid then dismissed[panelUid] = true end -- like Esc: it does not open again until walked off and back
+    if panelUid then dismissed[panelUid] = true end
     ClosePanel()
 end
 
----o[ For barrels.lua: every reading the server sends; true when the panel shows it (the gauge stays hidden) ]o---
+---o[ For barrels.lua ]o---
 function PushGame.OnHeat(uid, heat, gauge)
     lastReading[uid] = { heat = heat, gauge = gauge }
     if not panelOpen or uid ~= panelUid then return false end
@@ -181,7 +174,7 @@ function PushGame.OnHeat(uid, heat, gauge)
     return true
 end
 
----o[ For Barrels.RadialActions: may the F2 menu offer "Work The Fire" here? ]o---
+---o[ For Barrels.RadialActions ]o---
 function PushGame.CanOpen(uid)
     return PanelMode() and not panelOpen and Here(true) == uid
 end
@@ -221,7 +214,7 @@ end)
 ---oo[ The loop: the panel's life, or the prompts ]oo---
 local function PanelTick()
     if panelOpen then
-        ---o[ Gone from the push: close. An incident's game: step aside, then come back ]o---
+        ---o[ Gone from the push ]o---
         if Here(true) ~= panelUid then
             ClosePanel()
         elseif (GSC.Minigame ~= nil and GSC.Minigame.IsActive()) or GSC.Barrels.IsBusy() then
@@ -244,7 +237,7 @@ local function PanelTick()
             running = false
             ShowPrompts(false, false, false, false, false)
         end
-        if not Here(true) then dismissed = {} end -- walked off: the next push (or coming back) opens it again
+        if not Here(true) then dismissed = {} end
         return 250
     end
 
@@ -253,7 +246,7 @@ local function PanelTick()
         return 100
     end
 
-    ---o[ Dismissed: one prompt to open it again (the F2 menu has the same) ]o---
+    ---o[ Dismissed ]o---
     running = true
     ShowPrompts(false, false, false, false, true)
     if groupLabel then UiPromptSetActiveGroupThisFrame(group, groupLabel, 0, 0, 0, 0) end
@@ -301,7 +294,7 @@ CreateThread(function()
         local atStill = GSC.Barrels ~= nil and GSC.Barrels.IsAtBarrel and GSC.Barrels.IsAtBarrel()
         if Conf() and not panelOpen and not running and not atStill then
             sleep = 1000 -- not at a still: nothing to watch
-            if next(dismissed) ~= nil then dismissed = {} end -- walked off: coming back opens it again
+            if next(dismissed) ~= nil then dismissed = {} end
             SetTap(nil)
         elseif Conf() then
             sleep = PanelMode() and PanelTick() or PromptTick()

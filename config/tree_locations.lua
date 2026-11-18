@@ -26,7 +26,7 @@ Config.ClimbTrees = {
 
 ---o[ Tree Settings ]o---
 Config.AutoSaveConfigTrees = true -- save the trees above to the database on first run
-Config.DebugTreeCommands   = true -- tree admin commands on (false before launch)
+Config.DebugTreeCommands   = false -- dev tree commands: spawntree, listtreesdb, cleartreesdb, fixduplicates
 
 ---o[ Tree Admins - who may delete trees ]o---
 Config.TreeAdmin = {

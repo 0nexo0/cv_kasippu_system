@@ -1,24 +1,12 @@
 local Notify = GSC.module('Notify')
 
 ---oo[ The Script's Own Notifications ]oo---
--- Every message this script shows a player comes through here; the server reaches it with
--- GSC.Notify.Send -> gsc_kassippu:client:notify.
--- kind: "info" (default) | "warning" | "alert" (alert may carry a title, e.g. law dispatch)
---
--- Two ways to draw a note (Config.Notify.UseVorp):
---   false: the script's own notes (nui/: #notify-stack). They stack, so every note shows at once.
---   true:  the game's right-hand feed (what VORP's NotifyAdvanced / NotifyRightTip use). That feed
---          shows ONE message at a time and queues the rest until the one on screen runs out - so
---          with VORP's own calls a note from an earlier action held back the next action's note.
---          Here the feed is driven directly instead: notes that arrive together are joined into
---          one, and a new note takes the place of the one still showing, so what the player
---          sees always matches what they just did.
 
 local function Conf()
     return Config.Notify or {}
 end
 
----o[ How long a note stays: its own time, stretched for long text (ReadingTime), never past MaxMs ]o---
+---o[ How long a note stays ]o---
 local function NoteMs(text, ms)
     local conf = Conf()
     ms = tonumber(ms) or conf.DefaultMs or 4000
@@ -28,7 +16,7 @@ local function NoteMs(text, ms)
     return math.floor(math.min(ms, tonumber(conf.MaxMs) or 8000))
 end
 
----o[ The wax seal: the first Config.Notify.Icons group with a word in the message ]o---
+---o[ The wax seal ]o---
 function Notify.SealFor(text, kind)
     if kind == "alert" then return "law", kind end -- a dispatch is always the law's seal
 
@@ -45,33 +33,26 @@ function Notify.SealFor(text, kind)
 end
 
 ---oo[ The Game's Right-Hand Feed (UseVorp = true) ]oo---
--- Same natives and the same struct layout as vorp_core's VorpNotification:NotifyAdvanced /
--- NotifyRightTip (vorp_core/client/ref/vorp_notifications.lua), but the message id the feed
--- hands back is kept, so the note can be taken down the moment a newer one comes.
--- (vorp_core's own NotifyAdvanced throws that id away, so a note posted through it can't be
--- taken down early - that is why the next one queued behind it.)
-local FEED_SHOW_ADVANCED   = 0xB249EBCB30DD88E0 -- _UI_FEED_POST_SAMPLE_TOAST_RIGHT -> feedMessage (vorp_core NotifyAdvanced)
-local FEED_SHOW_RIGHT_TIP  = 0xB2920B9760F0F36B -- _UI_FEED_POST_FEED_TICKER -> feedMessage (vorp_core NotifyRightTip)
-local FEED_CLEAR_MESSAGE   = 0x2F901291EF177B02 -- _UI_FEED_CLEAR_HELP_TEXT_FEED(feedMessage, p1): one UIFEED message by id
-local FEED_CLEAR_CHANNEL   = 0xDD1232B332CBB9E7 -- UI_FEED_CLEAR_CHANNEL(feedChannel, p1, p2): vorp_core NotifyObjective calls it (3, 1, 0)
-local FEED_CURRENT_MESSAGE = 0xC17F69E1418CD11F -- UI_FEED_GET_CURRENT_MESSAGE(feedChannel) -> feedMessage on screen
--- NOT 0x00A15B94CBA4F76F: that is _UI_STICKY_FEED_CLEAR_MESSAGE, for the sticky feed only
--- (vorp_core NotifyFail / NotifyDead), so it never took an advanced note down.
+local FEED_SHOW_ADVANCED   = 0xB249EBCB30DD88E0
+local FEED_SHOW_RIGHT_TIP  = 0xB2920B9760F0F36B
+local FEED_CLEAR_MESSAGE   = 0x2F901291EF177B02
+local FEED_CLEAR_CHANNEL   = 0xDD1232B332CBB9E7
+local FEED_CURRENT_MESSAGE = 0xC17F69E1418CD11F
 
----o[ eUIFeedChannel (Halen84 RDR3-Native-Flags-And-Enums): the right-hand tip and the toasts ]o---
-local FEED_CHANNELS = { 5, 6 } -- kFeedChannel_Ticker = 5, kFeedChannel_Toast = 6
+---o[ eUIFeedChannel ]o---
+local FEED_CHANNELS = { 5, 6 }
 
----o[ Take one of our notes down: by its id, and - if it is the one on screen - its channel too ]o---
+---o[ Take one of our notes down ]o---
 local function TakeDown(id)
-    Citizen.InvokeNative(FEED_CLEAR_MESSAGE, id, true) -- TODO(verify): p1 is undocumented on rdr3natives; true assumed
+    Citizen.InvokeNative(FEED_CLEAR_MESSAGE, id, true)
     for _, channel in ipairs(FEED_CHANNELS) do
         if Citizen.InvokeNative(FEED_CURRENT_MESSAGE, channel, Citizen.ResultAsInteger()) == id then
-            Citizen.InvokeNative(FEED_CLEAR_CHANNEL, channel, 1, 0) -- same flags as vorp_core NotifyObjective
+            Citizen.InvokeNative(FEED_CLEAR_CHANNEL, channel, 1, 0)
         end
     end
 end
 
----o[ A zero-filled native struct of 8-byte slots (what vorp_core builds with its DataView) ]o---
+---o[ A zero-filled native struct of 8-byte slots ]o---
 local function Struct(bytes, slots)
     local parts = {}
     for i = 0, (bytes // 8) - 1 do
@@ -114,10 +95,10 @@ local shownId, shownUntil = nil, 0
 local function FeedShow(text, ms, seal, kind)
     local conf = Conf()
 
-    ---o[ The newest note takes the place of the one still up: no queue behind it ]o---
+    ---o[ The newest note takes the place of the one still up ]o---
     if shownId and shownId ~= 0 and GetGameTimer() < shownUntil then
         TakeDown(shownId)
-        Wait(0) -- one frame for the feed to let it go, so the new note is posted into an empty slot
+        Wait(0)
     end
     shownId = nil
 
@@ -146,7 +127,7 @@ local function FeedShow(text, ms, seal, kind)
         end
     end
 
-    if not drawn then -- "tip" style, or the icon's texture is not in yet: the plain right tip, never a wait
+    if not drawn then
         id = Citizen.InvokeNative(FEED_SHOW_RIGHT_TIP, Struct(8 * 7, { [0] = ms }), Struct(8 * 3, { [1] = Str(text) }), 1, Citizen.ResultAsInteger())
     end
 
@@ -157,7 +138,7 @@ local function FeedShow(text, ms, seal, kind)
     end
 end
 
----o[ Notes that land together (one server tick, one action) become one note ]o---
+---o[ Notes that land together become one note ]o---
 local RANK = { info = 1, warning = 2, alert = 3 }
 local batch = nil
 
@@ -178,7 +159,7 @@ local function FeedQueue(text, ms, seal, kind)
         SetTimeout(tonumber(conf.BatchMs) or 100, Flush)
     end
 
-    if batch.seen[text] then return end -- the same line twice in one go: once is enough
+    if batch.seen[text] then return end
     batch.seen[text] = true
 
     batch.lines[#batch.lines + 1] = text
@@ -187,7 +168,7 @@ local function FeedQueue(text, ms, seal, kind)
     batch.ms = math.max(batch.ms, ms)
 
     local rank = RANK[kind or "info"] or 1
-    if rank > batch.rank then -- the most serious line picks the icon and colour
+    if rank > batch.rank then
         batch.rank, batch.seal, batch.kind = rank, seal, kind
     end
 end
@@ -232,12 +213,6 @@ function Notify.Show(text, ms, kind, title)
 end
 
 ---oo[ Placement Notes: VORP NotifyObjective ]oo---
--- Everything said while setting something down (a still, an aging crate, a Water Barrel / Log
--- Rack): the hint, wet ground, too close / too far, cancelled, the limit, and the result.
--- Drawn by VORP itself: the client Core's NotifyObjective (vorp_core/client/clientapi.lua ->
--- vorp:TipBottom -> VorpNotification:NotifyObjective). That one clears the objective channel
--- before it posts, so a new placement note always takes the old one's place - the 10 s hint
--- never holds back "cancelled". Config.Notify.PlacementObjective = false: shown like any other note.
 local vorpCore = nil
 
 function Notify.Objective(text, ms)

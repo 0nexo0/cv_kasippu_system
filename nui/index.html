@@ -15,12 +15,7 @@
       <ul class="loot-items" id="loot-items"></ul>
     </div>
 
-    <!-- At-the-barrel gauge: drawn without NUI focus, so the prompts
-         underneath stay live while the player reads it.
-         Styled in the game's own manner: a black brush-stroke plate, white
-         serif caps under a red brush rule, the heat on an honour-meter
-         scale, and the rest as core rings with an icon in each, like the
-         player's own cores. -->
+    <!-- At-the-barrel gauge -->
     <div id="barrel-gauge" data-state="idle">
       <div class="rd-title">
         <div class="gauge-stage" id="gauge-stage">IDLE</div>
@@ -39,8 +34,7 @@
         <div class="gi-due" id="gi-due"></div>
       </div>
 
-      <!-- The heat: a notched scale with the needle riding above it. In the
-           final push, the band she wants held and the mark (a diamond) in it. -->
+      <!-- The heat -->
       <div class="rd-heat" id="gauge-dial">
         <div class="rd-heat-head">
           <span class="rd-cap">HEAT</span>
@@ -60,8 +54,7 @@
         <span id="gauge-timer">--s</span>
       </div>
 
-      <!-- The cores. Each ring is drawn on pathLength 100 so its fill is a
-           plain percent; the tick (where there is one) is a fixed line. -->
+      <!-- The cores -->
       <div class="rd-cores">
         <!-- The fire: how much burn is left in the box -->
         <div class="rd-core" id="gauge-fire-row">
@@ -119,8 +112,7 @@
           <span class="rd-core-lbl">FOUL</span>
         </div>
 
-        <!-- The fermenting wash: strength, ticked at the least the fire
-             will light under -->
+        <!-- The fermenting wash -->
         <div class="rd-core" id="gauge-ferment-row">
           <svg viewBox="0 0 48 48" aria-hidden="true">
             <circle class="ring-bg" cx="24" cy="24" r="20" />
@@ -136,8 +128,7 @@
           <span class="rd-core-lbl">WASH</span>
         </div>
 
-        <!-- The condenser's water while the spirit runs through it; the tick
-             is where it starts running hot -->
+        <!-- The condenser's water while the spirit runs through it -->
         <div class="rd-core" id="gauge-cond-row">
           <svg viewBox="0 0 48 48" aria-hidden="true">
             <circle class="ring-bg" cx="24" cy="24" r="20" />
@@ -151,8 +142,7 @@
           <span class="rd-core-lbl" id="gauge-cond-label">COOLER</span>
         </div>
 
-        <!-- Hold The Heat: the Water Barrel's litres (glows while the tap is open)
-             and the Log Rack's splits left -->
+        <!-- Hold The Heat -->
         <div class="rd-core" id="gauge-water-row">
           <svg viewBox="0 0 48 48" aria-hidden="true">
             <circle class="ring-bg" cx="24" cy="24" r="20" />
@@ -194,8 +184,7 @@
         <span id="gauge-ferment-timer"></span>
       </div>
 
-      <!-- The drip while the spirit is caught: its colour is the part of
-           the run coming off, the right-hand value is the jar -->
+      <!-- The drip while the spirit is caught -->
       <div class="rd-line" id="gauge-cut-row">
         <span class="rd-cap">DRIP</span>
         <div class="rd-bar"><div class="rd-bar-fill cut-fill" id="gauge-cut-fill"></div></div>
@@ -207,8 +196,7 @@
         <div class="gauge-cut-do" id="gauge-cut-do"></div>
       </div>
 
-      <!-- Who is cooking with the owner, and the still's fittings; each
-           hidden when there is none -->
+      <!-- Who is cooking with the owner, and the still's fittings -->
       <div class="rd-meta" id="gauge-crew">
         <span class="rd-cap">CREW</span>
         <span class="rd-meta-val" id="gauge-crew-names"></span>
@@ -219,13 +207,7 @@
       </div>
     </div>
 
-    <!-- At-the-crate gauge: the barrel gauge's black brush plate, worn by the
-         crate. Drawn without NUI focus - the arrow keys and prompts are read
-         in Lua (features/crates/client/crates.lua) and the card follows them.
-         The rack is the crate itself: one bottle per slot, filled with the
-         colour of the tier it has reached; the picked bottle lifts out and
-         is read out in the ledger underneath. Words come from
-         Config.Text.CrateGauge. -->
+    <!-- At-the-crate gauge -->
     <div id="crate-gauge" data-state="idle">
       <div class="cg2-title" id="cg2-title">AGING CRATE</div>
       <div class="cg2-rule"></div>
@@ -259,8 +241,7 @@
         </div>
         <div class="cg2-grade" id="cg2-grade"></div>
 
-        <!-- Raw to the richest tier: lit up to where the bottle stands,
-             the needle drifting on toward the next -->
+        <!-- Raw to the richest tier -->
         <div class="cg2-track" id="cg2-track">
           <div class="cg2-track-line"><div class="cg2-track-fill" id="cg2-track-fill"></div></div>
           <div class="cg2-track-needle" id="cg2-track-needle"></div>
@@ -342,8 +323,7 @@
         </div>
       </div>
 
-      <!-- What the crate wants: a brush banner while a window is open,
-           otherwise the wait until the next one -->
+      <!-- What the crate wants -->
       <div class="cg2-call" id="cg2-call">
         <div class="cg2-call-head">
           <span id="cg2-call-what"></span>
@@ -361,8 +341,7 @@
       </div>
     </div>
 
-    <!-- The script's minigames (crate and trees). Lua gives the page keyboard focus (no cursor)
-         while one runs; the stage is rebuilt for each game type. -->
+    <!-- The script's minigames -->
     <div id="minigame">
       <div class="cg-title" id="cg-title"></div>
       <div class="cg-hint" id="cg-hint"></div>
@@ -376,12 +355,7 @@
       <div class="cg-banner" id="cg-banner"></div>
     </div>
 
-    <!-- ================================================================
-         THE STILL-MASTER'S BOOK
-         Opens like a real one: the closed book rises, the front cover
-         swings back on its spine, and the pages are inked in. Choosing
-         another receipt turns a leaf. Every id the script fills is kept.
-         ================================================================ -->
+    <!-- THE STILL-MASTER'S BOOK Opens like a real one -->
     <div id="journal" class="journal">
       <div class="journal-stage">
         <div class="book" id="book">
@@ -486,9 +460,7 @@
         <!-- The slips tucked in beside the book, one under the other -->
         <div class="slip-stack still-only">
 
-        <!-- The mash slip: what is in the barrel and what the open receipt
-             would make of it. Filled by the server's reading
-             (features/still/server/mash.lua). -->
+        <!-- The mash slip -->
         <div id="mash-slip" class="grain">
           <div class="slip-clip"></div>
           <div class="gauge-stage" id="mash-title">IN THE BARREL</div>
@@ -505,9 +477,7 @@
           <div class="mash-legend" id="mash-legend"></div>
         </div>
 
-        <!-- The crew slip, the owner's only: who is cooking with them, and
-             the players standing by the barrel who can be asked to.
-             Filled by the server (features/crew/server/barrel_crew.lua). -->
+        <!-- The crew slip, the owner's only -->
         <div id="crew-slip" class="grain">
           <div class="slip-clip"></div>
           <div class="crew-head">
@@ -520,13 +490,22 @@
         </div>
 
         </div>
+
+        <!-- The fittings slip, right of the book, owner and crew only -->
+        <div class="slip-stack-right still-only">
+          <div id="fittings-slip" class="grain">
+            <div class="slip-clip"></div>
+            <div class="crew-head">
+              <span class="gauge-stage" id="fittings-title">FITTINGS</span>
+              <span class="crew-count" id="fittings-count"></span>
+            </div>
+            <div class="fittings-list" id="fittings-list"></div>
+            <div class="crew-empty fittings-hint" id="fittings-hint"></div>
+          </div>
+        </div>
       </div>
     </div>
-    <!-- Tasting: the bottle picker (Tasting Cup) and the notes card (GSC.Tasting).
-         Both wear the dark brush plate. The picker has NUI focus: hover or the
-         arrows choose a bottle and pour it into the cup, a click or Enter sips
-         it, Esc puts the cup away. The card has no focus and fades itself.
-         Words come from Config.Text.Tasting. -->
+    <!-- Tasting -->
     <div id="taste-picker">
       <div class="tp-head">
         <div class="tp-title" id="tp-title"></div>
@@ -614,10 +593,7 @@
       <div class="tc-timer"><div class="tc-timer-fill" id="tc-timer"></div></div>
     </div>
 
-    <!-- The buyer's ledger (GSC.Buyers / GSC.Market): a dark brush plate in
-         the manner of the game's own shop menus. Has NUI focus (mouse and
-         keyboard): arrows pick a line and the amount, Enter is held to shake
-         on it, Esc walks away. Words come from Config.Text.Market. -->
+    <!-- The buyer's ledger -->
     <div id="buyer-ledger">
       <div class="bl-head">
         <div class="bl-title" id="bl-title"></div>
@@ -681,8 +657,7 @@
     </div>
 
     <!-- The script's own notifications: paper notes stacked top right (GSC.Notify) -->
-    <!-- Hold The Heat: "The Firebox" (Config.HeatSkill.Game.Panel). Built by nui/script.js (pushPanel);
-         drag a split from the rack into the fire, hold the valve, pull the lever. -->
+    <!-- Hold The Heat -->
     <div id="push-panel">
       <div class="pp-plate">
         <div class="pp-head">

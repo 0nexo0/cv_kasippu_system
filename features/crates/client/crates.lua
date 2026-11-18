@@ -1,19 +1,19 @@
 local Crates = GSC.module('Crates')
 
-local crates = {}        -- [uid] = { pos, heading, count, entity, bottles = { entity, ... }, lifted }
-local myCrates = {}      -- [uid] = { pos, state, blip } for the crates this character owns
+local crates = {}
+local myCrates = {}
 local currentCrate = nil -- uid the player is stood at
 local gauge = nil        -- last gauge payload for currentCrate
-local selected = nil     -- slot index the player has picked, 1-based
-local selectedId = nil   -- ...and the id of the bottle in it, so the pick survives the slots shifting
+local selected = nil
+local selectedId = nil
 local busy = false       -- an animation or minigame is running
 local isPlacing = false
 local ghostEntity = nil
 
 local PromptGroup = CreateVarString(10, 'LITERAL_STRING', "Aging Crate")
 local StorePrompt, TakePrompt, TendPrompt, PickupPrompt, SelectPrompt, LockPrompt
-local tendPromptActivity = nil -- which activity the tend prompt's text currently names
-local lockPromptText = nil     -- which of lock / unlock / pick the lock prompt currently says
+local tendPromptActivity = nil
+local lockPromptText = nil
 
 ---oo[ Props ]oo---
 
@@ -58,7 +58,7 @@ local function SlotOffset(i)
     )
 end
 
----o[ Seat bottle i in its slot - proud of the rest if it is the picked one ]o---
+---o[ Seat bottle i in its slot ]o---
 local function AttachBottle(crate, i)
     local bottle = crate.bottles[i]
     if not bottle or not DoesEntityExist(bottle) then return end
@@ -149,7 +149,7 @@ local function AddCrate(uid, data)
     local known = crates[uid]
     local pos = vector3(data.x, data.y, data.z)
 
-    ---o[ Already here, same place: update it, never respawn it (a re-sync must not flicker) ]o---
+    ---o[ Already here, same place ]o---
     if known and #(known.pos - pos) < 0.01 then
         known.count = data.count or 0
         if (data.heading or 0.0) ~= known.heading then
@@ -185,7 +185,7 @@ local function RemoveCrate(uid)
     end
 end
 
----o[ Ask for every crate ourselves once our scripts are up (see the barrels' request) ]o---
+---o[ Ask for every crate ourselves once our scripts are up ]o---
 CreateThread(function()
     Wait(3500)
     if Config.CrateAging and Config.CrateAging.Enabled then TriggerServerEvent('gsc_kassippu:server:requestCrates') end
@@ -258,7 +258,7 @@ local function DropBlip(entry)
     entry.blip = nil
 end
 
----o[ (Re)draw one of my crates on the map, coloured by what it needs ]o---
+---o[ draw one of my crates on the map, coloured by what it needs ]o---
 local function DrawBlip(entry)
     DropBlip(entry)
 
@@ -402,7 +402,7 @@ local function PlayCrateAnim(spec, holdBottle)
 
     DeleteLocal(prop)
     if spec.scenario and GSC.Barrels ~= nil and GSC.Barrels.EndScenario then
-        GSC.Barrels.EndScenario(ped, spec.scenario) -- out of the scenario for sure (never left stuck in place)
+        GSC.Barrels.EndScenario(ped, spec.scenario)
     else
         ClearPedTasks(ped)
     end
@@ -434,7 +434,7 @@ AddEventHandler('gsc_kassippu:client:crateAction', function(uid, kind, activityK
     busy = false
 end)
 
----o[ An activity or a hazard, by key - the client's copy of the same lookup ]o---
+---o[ An activity or a hazard, by key ]o---
 local function FindActivity(key)
     local conf = Config.CrateAging
     for _, list in ipairs({ conf.Activities or {}, conf.Hazards or {} }) do
@@ -477,7 +477,7 @@ local function RunActivity(uid, activityKey)
     TriggerServerEvent('gsc_kassippu:server:tendCrate', uid, activityKey, passed)
 end
 
----o[ The server has started a crate job for us (server:startTendCrate) - play it ]o---
+---o[ The server has started a crate job for us ]o---
 RegisterNetEvent('gsc_kassippu:client:crateRunActivity')
 AddEventHandler('gsc_kassippu:client:crateRunActivity', function(uid, activityKey)
     if busy then return end
@@ -538,7 +538,6 @@ CreateThread(function()
     PromptSetGroup(SelectPrompt, PromptGroup, 0)
     PromptRegisterEnd(SelectPrompt)
 
-    ---o[ The radial menu's prompt, shown instead of the action prompts when it runs the crate ]o---
 end)
 
 ---o[ Same once-per-press latch the barrel prompts use ]o---
@@ -589,7 +588,7 @@ end
 
 ---oo[ The Crate Gauge ]oo---
 local gaugeVisible = false
-local sentGauge, sentSelected = nil, nil -- what the UI is already showing, so it is not re-sent unchanged
+local sentGauge, sentSelected = nil, nil
 
 local function HideCrateGauge()
     if not gaugeVisible then return end
@@ -598,7 +597,7 @@ local function HideCrateGauge()
     SendNUIMessage({ action = "hideCrateGauge" })
 end
 
----o[ The scales the card draws its bars and rings against (sent once per showing) ]o---
+---o[ The scales the card draws its bars and rings against ]o---
 local function CrateGaugeLimits()
     local conf = Config.CrateAging
     local ageMax, keepMax = 1.0, 1.0
@@ -635,13 +634,13 @@ local function ShowCrateGauge()
     })
 end
 
----o[ Nothing else owns the player right now (placing, a minigame, the still, an invite) ]o---
+---o[ Nothing else owns the player right now ]o---
 local function CrateBlocked()
     return isPlacing or busy or (GSC.Barrels.IsAtBarrel and GSC.Barrels.IsAtBarrel())
         or (GSC.Crew.IsInvitePending and GSC.Crew.IsInvitePending())
 end
 
----o[ What this crate offers this player right now - the prompts AND the radial menu read this ]o---
+---o[ What this crate offers this player right now ]o---
 local function CrateOffer(crate)
     local conf = Config.CrateAging
     local P = Config.PromptsTxt
@@ -669,8 +668,7 @@ local function CrateOffer(crate)
     return o
 end
 
----o[ Do one crate action - the prompts and the radial menu both come here. The server checks everything again. ]o---
--- slotId: the bottle to take (nil = the oldest one)
+---o[ Do one crate action ]o---
 local function DoCrate(action, uid, mine, slotId)
     if action == "store" then
         TriggerServerEvent('gsc_kassippu:server:storeCrateBottle', uid)
@@ -679,7 +677,7 @@ local function DoCrate(action, uid, mine, slotId)
     elseif action == "pickup" then
         TriggerServerEvent('gsc_kassippu:server:pickupCrate', uid)
     elseif action == "tend" then
-        TriggerServerEvent('gsc_kassippu:server:startTendCrate', uid) -- the server times it, then sends crateRunActivity
+        TriggerServerEvent('gsc_kassippu:server:startTendCrate', uid)
     elseif action == "lock" then
         if mine then
             TriggerServerEvent('gsc_kassippu:server:toggleCrateLock', uid)
@@ -689,12 +687,12 @@ local function DoCrate(action, uid, mine, slotId)
     end
 end
 
----o[ For GSC.Radial: what this crate offers right now, as menu actions ]o---
+---o[ For GSC.Radial ]o---
 function Crates.RadialActions()
     if not (GSC.Radial ~= nil and GSC.Radial.Owns("crate")) then return nil end -- the crate is on its key prompts
     local crate = currentCrate and crates[currentCrate]
     if not crate then return nil end
-    ---o[ Not CrateBlocked: standing at a still is fine here, so a crate beside it shares the still's menu ]o---
+    ---o[ Not CrateBlocked ]o---
     if isPlacing or busy or (GSC.Crew.IsInvitePending and GSC.Crew.IsInvitePending()) then return nil end
 
     local uid = currentCrate
@@ -715,7 +713,7 @@ function Crates.RadialActions()
 
     if o.canStore then Add("store", P.CrateStorePrompt, "wine-bottle") end
 
-    ---o[ Take: one wedge per bottle in the crate, named with its level - no arrows needed ]o---
+    ---o[ Take ]o---
     if o.canTake then
         local bottles = {}
         for _, slot in ipairs(gauge and gauge.slots or {}) do
@@ -745,7 +743,7 @@ end
 CreateThread(function()
     local shownKey = nil
     local lastGaugeSend = 0
-    local offer, offerAt, offerGauge, offerCrate = nil, 0, nil, nil -- CrateOffer, rebuilt every 200 ms, not every frame
+    local offer, offerAt, offerGauge, offerCrate = nil, 0, nil, nil
 
     while true do
         local sleep = 1000 -- at no crate
@@ -757,7 +755,7 @@ CreateThread(function()
         if crate and not blocked then
             sleep = 0
 
-            ---o[ What the crate offers: rebuilt every 200 ms, or at once on a new reading or another crate ]o---
+            ---o[ What the crate offers ]o---
             local nowMs = GetGameTimer()
             local fresh = false
             if not offer or nowMs - offerAt >= 200 or gauge ~= offerGauge or currentCrate ~= offerCrate then
@@ -771,9 +769,9 @@ CreateThread(function()
             local canStore, canPickup, lockText = o.canStore, o.canPickup, o.lockText
 
             UiPromptSetActiveGroupThisFrame(PromptGroup, GroupLabel(count, capacity, locked))
-            local radialHere = (GSC.Radial ~= nil and GSC.Radial.Owns("crate")) -- menu only: [F6] + the bottle arrows, no action keys
+            local radialHere = (GSC.Radial ~= nil and GSC.Radial.Owns("crate"))
 
-            ---o[ Prompt set: only rewritten when it changes (the key is only built with a fresh offer) ]o---
+            ---o[ Prompt set ]o---
             local key = fresh and string.format("%d|%s|%s|%s|%s|%s", count, tostring(canTend), tostring(gauge and gauge.activity),
                 tostring(canTake), tostring(canStore), tostring(lockText)) or shownKey
             if key ~= shownKey then
@@ -797,7 +795,7 @@ CreateThread(function()
                 end
             end
             if radialHere then GSC.Radial.Hint("crate") end -- the "F2 Kasippu Menu" tag
-            if radialHere and count <= 1 then sleep = 100 end -- menu mode, no bottle arrows: nothing to draw each frame
+            if radialHere and count <= 1 then sleep = 100 end
 
             ---o[ Choosing a bottle ]o---
             local keys = Config.InteractKeys
@@ -810,12 +808,12 @@ CreateThread(function()
                     selected = ((selected - 1 + step) % count) + 1
                     selectedId = gauge.slots[selected] and gauge.slots[selected].id or nil
                     PlaySoundFrontend("SELECT", "RDRO_Character_Creator_Sounds", true, 0)
-                    lastGaugeSend = 0 -- show it now, not on the next half-second
+                    lastGaugeSend = 0
                 end
             end
             LiftBottle(crate, selected)
 
-            if not radialHere then -- the key prompts (hidden while the menu runs the crate)
+            if not radialHere then
                 if canStore and HoldJustCompleted(StorePrompt) then
                     DoCrate("store", currentCrate, mine)
                 end
@@ -837,8 +835,7 @@ CreateThread(function()
                 end
             end
 
-            ---o[ Gauge: sent when the server's reading or the selected bottle changes, not on a timer ]o---
-            -- (each crateGauge push is a new table, so a reference check catches every update)
+            ---o[ Gauge ]o---
             if gauge and (not gaugeVisible or gauge ~= sentGauge or selected ~= sentSelected)
                 and GetGameTimer() - lastGaugeSend > 100 then
                 lastGaugeSend = GetGameTimer()
@@ -983,5 +980,4 @@ AddEventHandler('onResourceStop', function(resourceName)
             PromptDelete(prompt)
         end
     end
-
 end)

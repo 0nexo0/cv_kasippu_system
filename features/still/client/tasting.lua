@@ -1,19 +1,15 @@
 local Tasting = GSC.module('Tasting')
 
 ---oo[ Tasting: the client half ]oo---
--- The server lists the bottles (tastePicker), opens the tasting (tasteGame) and sends what it
--- revealed (tastingCard). Here: the picker, the minigame, and the card. The client only ever
--- reports how well the minigame went (0 - 1); what that learns is the server's (server/tasting.lua).
 
-local picking = false -- the bottle picker is up (it has the cursor)
+local picking = false
 local busy = false    -- a tasting is running
 
 local function T()
     return Config.Text.Tasting or {}
 end
 
----o[ The picker ]o---
----o[ For GSC.Radial: is the bottle picker or a tasting holding the screen? ]o---
+---o[ For GSC.Radial ]o---
 function Tasting.IsBusy()
     return picking or busy
 end
@@ -50,7 +46,7 @@ AddEventHandler('gsc_kassippu:client:tastePicker', function(list)
     SendNUIMessage({
         action = "tastePicker",
         list = list,
-        tint = game.tint,         -- what the cup fills with: a fresh bottle...
+        tint = game.tint,
         agedTint = game.agedTint, -- ...and one aged in a crate
         text = { title = t.PickerTitle, hint = t.PickerHint, taste = t.PickerTaste, keys = t.PickerKeys },
     })
@@ -123,7 +119,6 @@ AddEventHandler('gsc_kassippu:client:tasteGame', function(id, recipeKey, aged)
 
         local passed, score = GSC.Minigame.Play(game, t.GameTitle)
 
-        -- played to the end (a pass or a muddle): the server decides what it learns. Given up: nothing.
         if passed ~= nil and score then
             TriggerServerEvent('gsc_kassippu:server:tasteResult', id, score)
         end
@@ -144,7 +139,7 @@ AddEventHandler('gsc_kassippu:client:tastingCard', function(card)
         quality = card.quality,
         full = card.full == true,
         scoreText = (card.full and card.score) and string.format(t.CardScore, card.score) or nil,
-        score = (card.full and tonumber(card.score)) or nil, -- 0 - 100, for the scale under the stars
+        score = (card.full and tonumber(card.score)) or nil,
         notes = card.notes,
         flaws = card.flaws,
         ms = math.floor(((Config.Tasting or {}).CardSeconds or 10) * 1000),
@@ -158,7 +153,7 @@ AddEventHandler('gsc_kassippu:client:tastingCard', function(card)
     })
 end)
 
----o[ Stopped with the picker up: the page goes with the resource, the focus would not ]o---
+---o[ Stopped with the picker up ]o---
 AddEventHandler('onResourceStop', function(resourceName)
     if GetCurrentResourceName() ~= resourceName then return end
     if picking then SetNuiFocus(false, false) end

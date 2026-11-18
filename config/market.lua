@@ -1,14 +1,4 @@
 ---o[ The Market - buyers who pay for what you brew ]o---
--- Saloon back doors pay a steady, lower price. The travelling buyer pays more, but he moves
--- between hidden camps: ask at a saloon where he was last seen. Talk to either to open the
--- buyer's ledger, choose what to sell and how many, and shake on it.
---
--- Price of one bottle:
---   Base[recipe] x Strength x Grade x Aged x tasting x trust x the buyer's Rate x demand
--- Everything is worked out on the server; the ledger only shows it.
---
--- !! The coordinates below are PLACEHOLDERS near each town. Stand where you want a buyer, read
--- !! your position (e.g. a /coords command) and put it here before you go live.
 Config.Market = {
     Enabled = true, -- false: no buyers anywhere
 
@@ -20,8 +10,7 @@ Config.Market = {
     SellDistance  = 4.0,  -- metres: the server only deals this close (a little slack over TalkDistance)
     SessionSeconds = 180, -- the ledger stays valid this long after it opens
 
-    ---o[ Saloon back doors - always in the same place, a steady lower price ]o---
-    -- hours = nil: any time; { from = 20, to = 4 } = only between those game hours
+    ---o[ Saloon back doors ]o---
     Saloons = {
         { id = "valentine",   name = "Smithfield's back door", coords = vector3(-313.0, 812.0, 118.98), heading = 100.0 },
         { id = "rhodes",      name = "Rhodes saloon cellar",    coords = vector3(1340.0, -1374.0, 80.5),   heading = 350.0 },
@@ -50,7 +39,7 @@ Config.Market = {
     Blips = { Enabled = true, Sprite = nil, Scale = 0.7, Name = "Moonshine Buyer" },
 
     ---o[ The price ]o---
-    Base        = { kasippu = 6.0, raaa = 5.0 }, -- $ for one Regular, Good, fresh, tasted bottle (trust 50, Rate 1, first of the day). Keys = Config.Recipes keys
+    Base        = { kasippu = 6.0, raaa = 5.0 }, -- $ for one Regular, Good, fresh, tasted bottle
     DefaultBase = 4.0,  -- a recipe not listed above
     Strength    = { LIGHT = 0.8, REGULAR = 1.0, STRONG = 1.25 },   -- by strength key (the proof)
     Grade       = { NORMAL = 0.75, GOOD = 1.0, PERFECT = 1.4 },    -- by grade
@@ -62,13 +51,13 @@ Config.Market = {
     TaintedKnownRate = 0.4,    -- a tasted bottle known to be tainted: he pays this share, no hard feelings
     SouredRate       = 0.15,   -- a bottle that turned in a crate (0 = he won't take them)
 
-    ---o[ Demand - each buyer only takes so much; every bottle sold lowers his price a little ]o---
+    ---o[ Demand ]o---
     Demand         = 48,   -- bottles each buyer takes per restock (all players together; 5 buyers = 480 an hour)
     RestockMinutes = 30,   -- his demand comes back after this long
-    DemandDrop     = 0.01, -- each bottle he already bought this period lowers the price this share (floor at bottle 40)
+    DemandDrop     = 0.01, -- each bottle he already bought this period lowers the price this share
     DemandFloor    = 0.6,  -- never below this share
 
-    ---o[ Trust - one per character, kept in the database (gsc_kassippu_trust) ]o---
+    ---o[ Trust ]o---
     Trust = {
         Start       = 50,  -- a new character's trust (0 - 100)
         RefuseBelow = 15,  -- below this, buyers won't deal with you

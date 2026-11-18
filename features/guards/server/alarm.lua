@@ -1,4 +1,4 @@
-GSC.module('Alarm') -- registered for /gscmodules; it has no public functions
+GSC.module('Alarm')
 
 local alarmCooldown = Config.GuardSpawnConf.AlertCoolDown
 
@@ -33,7 +33,7 @@ local function MarkerCoords(src, zoneData, reported)
     return zoneData and zoneData.coords or reported
 end
 
----o[ Events]o---
+---o[ Events ]o---
 RegisterNetEvent('gsc_kassippu_alert:server:AreaTrespass', function(coords, gardenLabel, zoneName, suspectCoords, isUpdate)
     local _source = source
     local currentTime = os.time() * 1000

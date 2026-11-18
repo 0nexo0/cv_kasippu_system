@@ -2,23 +2,23 @@ local Guards = GSC.module('Guards')
 
 local GuardConf = Config.GuardSpawnConf
 
-local zoneGuards = {}     -- [zoneIndex][slotId] = { ped=, post=, state=, ... }
-local zoneAlertUntil = {} -- [zoneIndex] = timestamp the guards stop hunting
-local zoneRoster = {}     -- [zoneIndex] = who the SERVER says is on duty
-local rosterAsked = {}    -- [zoneIndex] = when this client last asked for a roster
+local zoneGuards = {}
+local zoneAlertUntil = {}
+local zoneRoster = {}
+local rosterAsked = {}
 
 ---oo[ SUSPICION ]oo---
 local zoneSuspicion = {}    -- [zoneIndex] = 0..Max
-local zoneSuspLevel = {}    -- [zoneIndex] = "calm" | "notice" | "investigate" | "hostile"
-local zoneHostileSince = {} -- [zoneIndex] = when it last crossed into hostile
-local zoneNoise = {}        -- [zoneIndex] = latest report from GSC.Zones
-local zoneLawCalled = {}    -- [zoneIndex] = true once dispatch has been asked for
-local zoneForced = {}       -- [zoneIndex] = hostility was FORCED, so the passive ceiling must not undo it
-local zoneLastKnown = {}    -- [zoneIndex] = where any man last saw or heard him; the search party goes here
-local zoneSensedAt = {}     -- [zoneIndex] = when any man last saw or heard him: what makes loud movement WITNESSED
-local zoneLevelSince = {}   -- [zoneIndex] = when the yard reached its current level, for the drop hysteresis
-local zoneWarnUntil = {}    -- [zoneIndex] = a man is holding him at gunpoint until then
-local zoneWarnedAt = {}     -- [zoneIndex] = when he was last warned: caught again inside MemorySeconds, no second warning
+local zoneSuspLevel = {}
+local zoneHostileSince = {}
+local zoneNoise = {}
+local zoneLawCalled = {}
+local zoneForced = {}
+local zoneLastKnown = {}
+local zoneSensedAt = {}
+local zoneLevelSince = {}
+local zoneWarnUntil = {}
+local zoneWarnedAt = {}
 
 local SUSP_CALM, SUSP_NOTICE = "calm", "notice"
 local SUSP_INVESTIGATE, SUSP_HOSTILE = "investigate", "hostile"
@@ -52,7 +52,7 @@ end
 
 ---o[ NOTIFICATIONS ]o---
 local notifyAt = {}   -- ["zone:key"] = when it was last shown
-local zoneWarned = {} -- [zoneIndex] = the player has been told the yard is after him
+local zoneWarned = {}
 
 local function ZoneNotify(zoneIndex, key, text, duration, tip, cooldownMs)
     text = Shared.PlainText(text)
@@ -65,7 +65,6 @@ local function ZoneNotify(zoneIndex, key, text, duration, tip, cooldownMs)
     if notifyAt[id] and (now - notifyAt[id]) < cooldownMs then return end
     notifyAt[id] = now
 
-    -- tip = the yard is after him (hostile, warned): drawn as a warning note
     GSC.Notify.Show(text, duration, tip and "warning" or "info")
 end
 
@@ -138,8 +137,6 @@ local function SetGuardsHostile(hostile)
 end
 
 ---o[ GUARD SETUP ]o---
--- Combat settings, group and weapon live on the machine that OWNS the ped, so whoever
--- takes him over (the man who created him, or a player who has to fight him) applies them again
 local function ApplyGuardSetup(ped, accuracy)
     SetEntityVisible(ped, true, false)
     SetEntityAlpha(ped, 255, false)
@@ -166,14 +163,14 @@ local function ApplyGuardSetup(ped, accuracy)
     SetPedAccuracy(ped, accuracy or GuardConf.Accuracy or 60)
 
     local weaponHash = GetHashKey(GuardConf.Weapons)
-    local ammo = math.max(0, math.floor(tonumber(GuardConf.AmmoCount) or 100)) -- honour the config: 0 = can never fire back
+    local ammo = math.max(0, math.floor(tonumber(GuardConf.AmmoCount) or 100))
 
     GiveWeaponToPed(ped, weaponHash, ammo, false, true)
     SetPedAmmo(ped, weaponHash, ammo)
     SetCurrentPedWeapon(ped, weaponHash, true, 0, false, false)
 end
 
----o[ CREATE A GUARD PED - only when the server hands us the job, and networked so all see him ]o---
+---o[ CREATE A GUARD PED ]o---
 local function CreateGuardPed(modelHash, coords, heading, accuracy)
     local ped = CreatePed(modelHash, coords.x, coords.y, coords.z, heading or 0.0, true, true, true, true)
 
@@ -192,7 +189,7 @@ local function CreateGuardPed(modelHash, coords, heading, accuracy)
     end
 
     SetNetworkIdExistsOnAllMachines(NetworkGetNetworkIdFromEntity(ped), true)
-    Citizen.InvokeNative(0x283978A15512B2FE, ped, true) -- outfit: synced, so it is set once, here
+    Citizen.InvokeNative(0x283978A15512B2FE, ped, true)
     ApplyGuardSetup(ped, accuracy)
 
     return ped
@@ -206,7 +203,7 @@ local GUARD_RETURN = "return"
 local GUARD_WARN = "warn"
 
 local Detection = GuardConf.Detection or {}
-local bodyAlerted = {}  -- [zoneIndex] = a corpse here has already raised the alarm once
+local bodyAlerted = {}
 
 ---o[ A DEAD GUARD IS DEAD, WHICHEVER NATIVE YOU ASK ]o---
 local function IsGuardDead(ped)
@@ -383,9 +380,6 @@ local function ApplyCombatArea(guard)
 end
 
 ---oo[ NETWORKED GUARDS: ONE MAN, MANY PLAYERS ]oo---
--- Every player sees the same ped, but only the machine that OWNS him can task him.
--- Routine (standing, patrolling, walking back) runs on the owner. Anything aimed at THIS player
--- (looking, searching, warning, fighting) takes him over first, then runs.
 local myServerId = GetPlayerServerId(PlayerId())
 
 local function Owns(ped)
@@ -412,7 +406,7 @@ local function SetBusy(guard, busy)
     if state.gscBusy ~= value then state:set('gscBusy', value, true) end
 end
 
----o[ Routine orders: the owner only, and never over another player's fight ]o---
+---o[ Routine orders ]o---
 local function Routine(guard, apply)
     if not Owns(guard.ped) or BusyForSomeoneElse(guard) then return end
     guard.retask = nil
@@ -434,7 +428,7 @@ local function Escalate(guard, apply)
 end
 
 ---o[ THE CIRCUIT: A RECTANGLE AROUND THE OUTSIDE OF THE YARD ]o---
-local zoneRingCache = {} -- [zoneIndex] = the perimeter points, in walking order
+local zoneRingCache = {}
 
 ---o[ Drop a flat point onto the terrain ]o---
 local function GroundPoint(x, y, fallbackZ)
@@ -714,7 +708,7 @@ local function TaskGuardCombat(guard, targetPed)
     end)
 end
 
----o[ The player is off the yard: shoot from the fence line, do not chase ]o---
+---o[ The player is off the yard ]o---
 local function TaskGuardHoldLine(guard, targetPed)
     local ped = guard.ped
     if not ped or not DoesEntityExist(ped) then return end
@@ -833,10 +827,9 @@ local function IsSpotVisible(coords)
 end
 
 ---o[ WHERE DOES A GUARD COME FROM? ]o---
-local spawnWaitSince = {} -- ["zone:slot"] = when this slot started waiting
+local spawnWaitSince = {}
 
 local function PickGuardEntry(zoneIndex, zoneData, post, slotId)
-    -- AtPostsOnly: straight onto his own post, whoever is watching
     if GuardConf.AtPostsOnly ~= false or not GuardConf.SpawnOutOfSight then return post.coords, false end
 
     local tc = TerritoryConf()
@@ -918,7 +911,6 @@ local function ResolveGuardPed(netId)
 end
 
 ---o[ RECONCILE LOCAL GUARDS WITH THE SERVER ROSTER ]o---
--- The server creates and removes the men; this only keeps track of which ped is which slot
 local function ReconcileZoneGuards(zoneIndex, zoneData)
     local roster = zoneRoster[zoneIndex]
 
@@ -958,7 +950,7 @@ local function ReconcileZoneGuards(zoneIndex, zoneData)
 
         if not slot or slot.netId ~= guard.netId then
             local body = not slot and guard.deadAt and DoesEntityExist(guard.ped)
-            if not body then guards[slotId] = nil end -- a body stays tracked until the server removes it
+            if not body then guards[slotId] = nil end
         end
     end
 
@@ -969,7 +961,7 @@ local function ReconcileZoneGuards(zoneIndex, zoneData)
         if post and slot.netId and not guards[slotId] then
             local ped = ResolveGuardPed(slot.netId)
 
-            if ped then -- nil = not streamed in here yet, try next pass
+            if ped then
                 local duty, walkerIndex, walkers = DutyFor(roster, slotId)
                 local route = nil
 
@@ -994,7 +986,7 @@ local function ReconcileZoneGuards(zoneIndex, zoneData)
                     routeIndex = 1,
                     range = post.range or GuardConf.DefaultGuardRange or 20.0,
                     taskTime = now,
-                    owned = false, -- the upkeep loop sets him up when this machine owns him
+                    owned = false,
                 }
             end
         end
@@ -1025,15 +1017,15 @@ RegisterNetEvent('gsc_kassippu_alert:client:spawnGuard', function(zoneName, slot
     TriggerServerEvent('gsc_kassippu_alert:server:guardSpawned', leaseId, netId)
 end)
 
----o[ This machine just became his owner: set him up and give him his orders ]o---
+---o[ This machine just became his owner ]o---
 local function TakeOverGuard(guard)
     ApplyGuardSetup(guard.ped, guard.accuracy)
-    if guard.retask then return end -- an order of ours is waiting; the loop runs it
+    if guard.retask then return end
 
     if guard.state == GUARD_PATROL then
         local leash = DutyConf().IdleLeashDistance or 4.0
         if #(GetEntityCoords(guard.ped) - guard.post.coords) > leash then
-            TaskGuardReturn(guard) -- walked in from elsewhere, or pulled off his post
+            TaskGuardReturn(guard)
         else
             TaskGuardPatrol(guard)
         end
@@ -1043,7 +1035,6 @@ local function TakeOverGuard(guard)
 end
 
 ---o[ SPAWN / DESPAWN A ZONE'S GUARDS ]o---
--- The server owns the men; these only start and stop watching them
 function Guards.Spawn(zoneIndex, zoneData)
     if GuardConf.Enabled == false then return end
 
@@ -1082,7 +1073,6 @@ RegisterNetEvent('gsc_kassippu_alert:client:zoneRoster', function(payload)
             ---o[ The last man just went down ]o---
             if payload.broken and not wasBroken then
                 ClearZoneCompletely(i)
-
             elseif wasBroken and not payload.broken then
                 local pCoords = GetEntityCoords(PlayerPedId())
                 if Shared.InZone(pCoords, zoneData) then
@@ -1154,7 +1144,7 @@ local function AlertZoneGuards(zoneIndex, targetPed)
     return #alive > 0
 end
 
----o[ ownedOnly: somebody ELSE set it off - only the men this machine already runs go looking ]o---
+---o[ ownedOnly ]o---
 local function SearchZoneGuards(zoneIndex, around, ownedOnly)
     local guards = zoneGuards[zoneIndex]
     if not guards then return end
@@ -1191,7 +1181,7 @@ local function SearchZoneGuards(zoneIndex, around, ownedOnly)
     devPrint(string.format("Search party of %d sent in zone %s", math.min(party, #available), tostring(zoneIndex)))
 end
 
----o[ THE YARD IS CLEARED: STOP WATCHING IT (the server removes the bodies) ]o---
+---o[ THE YARD IS CLEARED ]o---
 function ClearZoneCompletely(zoneIndex)
     local wasHere = zoneGuards[zoneIndex] ~= nil
 
@@ -1248,7 +1238,6 @@ local function SuspConf()
 end
 
 ---o[ What makes them open fire (GuardSpawnConf.FireOn) ]o---
--- Defaults are the old behaviour, for a config without FireOn
 local FIRE_DEFAULTS = {
     Running = true, Jumping = true, Gunshot = true, AimAtGuard = true,
     SeenClimbing = false, SeenArmed = false, Falling = false, TooClose = "warn",
@@ -1341,7 +1330,7 @@ function Guards.ReportPlayerNoise(zoneIndex, noise)
         CallLaw(zoneIndex)
     end
 
-    ---o[ Only what FireOn lists opens fire; the rest is left to suspicion ]o---
+    ---o[ Only what FireOn lists opens fire ]o---
     local fires = (noise.running and FireRule("Running")) or (noise.jumping and FireRule("Jumping"))
         or (noise.shooting and FireRule("Gunshot")) or (noise.falling and FireRule("Falling"))
     if not fires then return end
@@ -1448,7 +1437,7 @@ local function UpdateSuspicion(zoneIndex, witnesses, heard, playerPed)
     elseif zoneHostileSince[zoneIndex] then
         local graceMs = (c.HostileGraceSeconds or 12) * 1000
         if (now - zoneHostileSince[zoneIndex]) < graceMs then
-            level = SUSP_HOSTILE -- still hot, even though the score has dipped
+            level = SUSP_HOSTILE
         else
             zoneHostileSince[zoneIndex] = nil
         end
@@ -1475,19 +1464,16 @@ local function UpdateSuspicion(zoneIndex, witnesses, heard, playerPed)
 
         if level == SUSP_HOSTILE then
             GoHostile(zoneIndex, playerPed)
-
         elseif level == SUSP_INVESTIGATE then
             SearchZoneGuards(zoneIndex)
             if rising then
                 zoneWarned[zoneIndex] = true
                 ZoneNotify(zoneIndex, "search", Config.Text.GuardSearchingNotify, 3500, false)
             end
-
         elseif level == SUSP_NOTICE then
             if rising then
                 ZoneNotify(zoneIndex, "spotted", Config.Text.GuardSpottedNotify, 2500, false)
             end
-
         elseif level == SUSP_CALM then
             zoneLawCalled[zoneIndex] = nil
             if zoneWarned[zoneIndex] or previous == SUSP_HOSTILE or previous == SUSP_INVESTIGATE then
@@ -1543,7 +1529,7 @@ CreateThread(function()
         local playerPed = PlayerPedId()
         local playerCoords = GetEntityCoords(playerPed)
         local playerDead = IsEntityDead(playerPed)
-        local busy = false -- any guard doing something other than patrolling
+        local busy = false
 
         local playerCrouching = Citizen.InvokeNative(0xD5FE956C70FF370B, playerPed, Citizen.ResultAsInteger()) == 1 -- GetPedCrouchMovement
         local rangeGraceMs = (GuardConf.RangeGraceSeconds or 2) * 1000
@@ -1607,7 +1593,7 @@ CreateThread(function()
                 or (TerritoryConf().SearchParty or 2)
 
             for slotId, guard in pairs(guards) do
-                ---o[ Gone: removed by the server, or streamed out - reconcile picks him up again ]o---
+                ---o[ Gone ]o---
                 if not guard.ped or not DoesEntityExist(guard.ped) then
                     guards[slotId] = nil
                     goto nextGuard
@@ -1710,7 +1696,6 @@ CreateThread(function()
                     if guard.state ~= GUARD_COMBAT and guard.state ~= GUARD_WARN
                         and guard.inRangeSince
                         and (now - guard.inRangeSince) >= rangeGraceMs then
-
                         ---o[ Close, but is he BRAZEN? ]o---
                         local st = GuardConf.Stealth or {}
                         local spared = st.Enabled ~= false
@@ -1817,17 +1802,14 @@ CreateThread(function()
 
                         if not alerted and (now - (guard.lastSeen or now)) > ((det.LoseTargetSeconds or 8) * 1000) then
                             TaskGuardSearch(guard) -- lost him, sweep the area
-
                         elseif guardOut then
                             if guard.combatMode ~= "regroup" or (now - guard.taskTime) > 6000 then
                                 TaskGuardRegroup(guard)
                             end
-
                         elseif playerOut then
                             if guard.combatMode ~= "hold" or (now - guard.taskTime) > 3000 then
                                 TaskGuardHoldLine(guard, playerPed)
                             end
-
                         elseif guard.combatMode ~= "fight" then
                             guard.combatMode = "fight"
                             guard.taskTime = now
@@ -1837,7 +1819,6 @@ CreateThread(function()
                                 ApplyCombatArea(guard)
                                 TaskCombatPed(ped, playerPed, 0, 16)
                             end)
-
                         elseif not IsPedInCombat(guard.ped, playerPed) and (now - guard.taskTime) > 3000 then
                             guard.taskTime = now
                             local ped = guard.ped
@@ -1857,24 +1838,20 @@ CreateThread(function()
 
                         if alerted then
                             TaskGuardCombat(guard, playerPed)
-
                         elseif settled or not insideZone then
                             if zoneWarnUntil[zoneIndex] then
                                 zoneWarnUntil[zoneIndex] = nil
                                 ZoneNotify(zoneIndex, "complied", Config.Text.GuardWarnCompliedNotify, 3500, true)
                             end
                             TaskGuardReturn(guard)
-
                         elseif advancing or pushingIn then
                             devPrint("Warning defied: " .. (advancing and "advancing on the guard" or "pushing into the yard"))
                             ForceHostile(zoneIndex, "defied a warning")
                             GoHostile(zoneIndex, playerPed, Config.Text.GuardWarnIgnoredNotify)
-
                         elseif d > reach * (wc.ComplyDistanceFactor or 1.25) then
                             zoneWarnUntil[zoneIndex] = nil
                             ZoneNotify(zoneIndex, "complied", Config.Text.GuardWarnCompliedNotify, 3500, true)
                             TaskGuardReturn(guard)
-
                         elseif now >= (guard.warnUntil or now) then
                             devPrint("Warning ran out with him still in range")
                             ForceHostile(zoneIndex, "ignored a warning")
@@ -1984,7 +1961,7 @@ CreateThread(function()
                 ::nextGuard::
             end
 
-            ---o[ Seen climbing, with a gun out, or just not sneaking: FireOn says shoot ]o---
+            ---o[ Seen climbing, with a gun out, or just not sneaking ]o---
             if witnesses > 0 and insideZone and not playerDead and not exempt then
                 local seen = zoneNoise[zoneIndex] or {}
                 local why = (seen.climbing and FireRule("SeenClimbing") and "seen climbing a tree")
@@ -2031,7 +2008,7 @@ RegisterNetEvent('gsc_kassippu_alert:client:AlertGuards', function(zoneName, zon
 
                 if zoneGuards[i] and not Guards.IsHunting(i) and spot then
                     zoneLastKnown[i] = spot
-                    SearchZoneGuards(i, spot, true) -- only the men we already run; his own game sends the rest
+                    SearchZoneGuards(i, spot, true)
                 end
                 return
             end

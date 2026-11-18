@@ -1,9 +1,9 @@
 local Harvest = GSC.module('Harvest')
 
-local bucketState = {}      -- [uid] = { percent, cooldown, at } as of the last server answer
-local hudTreeUid = nil      -- uid of the tree the player is currently sitting on top of
-local hudShownPercent = nil -- eased value the bar actually draws (chases the real one)
-local lastSearchAt = {}     -- [treeKey] = when this client last got loot from that tree
+local bucketState = {}
+local hudTreeUid = nil
+local hudShownPercent = nil
+local lastSearchAt = {}
 
 ---oo[ 2D Text Helper (RedM) ]oo---
 local function DrawTxt(text, x, y, scale, r, g, b, a, centre)
@@ -116,7 +116,7 @@ CreateThread(function()
 
         if hudTreeUid and conf.ShowFillHud then
             local now = GetGameTimer()
-            local dt = math.min((now - lastFrame) / 1000, 0.25) -- clamp so a stutter cannot jump the bar
+            local dt = math.min((now - lastFrame) / 1000, 0.25)
             lastFrame = now
 
             if (now - lastRead) > 250 then
@@ -157,7 +157,7 @@ CreateThread(function()
         else
             lastSync = 0
             lastRead = 0
-            readPercent, readCooldown = nil, nil -- never show the last tree's reading on the next one
+            readPercent, readCooldown = nil, nil
             lastFrame = GetGameTimer()
             hudShownPercent = nil
             Wait(1000) -- no tree being watched
@@ -305,7 +305,7 @@ function Harvest.CollectCoconutWater(ped, treeEntity, treeData)
         Shared.Debug("^1[Coconut]^7 Collect anim dict failed to load: " .. tostring(dict))
     end
 
-    Wait(durationMs) -- hold here so the bar is seen emptying before control returns
+    Wait(durationMs)
 end
 
 ---oo[ Which Tree Is The Player Sitting On? ]oo---
@@ -313,7 +313,7 @@ function Harvest.WatchTree(uid)
     hudTreeUid = uid
 
     if uid then
-        bucketState[uid] = nil -- show "checking..." until the first answer
+        bucketState[uid] = nil
     else
         hudShownPercent = nil
     end

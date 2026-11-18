@@ -1,6 +1,4 @@
 ---o[ Player Text ]o---
--- Every message a player reads. %s = text, %d = number, %% = a % sign. Keep the % codes when rewording.
--- Plain text only: VORP notifications show colour codes (~r~) and emoji literally.
 Config.Text = {
     ---o[ Placing and losing a barrel ]o---
     KasiyaBarrelPlacementHint    = "Use E/R to rotate, ENTER to place, BACKSPACE to cancel",
@@ -159,7 +157,6 @@ Config.Text = {
         Cancelled    = "You put it away.",
         Wet          = "This ground is too wet! Find dry land.",
         NotAtStill   = "Stand at your still to set it down.",
-        NotYours     = "Only the still's owner or crew can set that down here.",
         TooFar       = "Too far from the still - set it down within %.0f m.",  -- metres
         TooClose     = "Too close to the still - give the fire some room.",
         Already      = "This still already has a %s.",                        -- the station's name
@@ -229,9 +226,16 @@ Config.Text = {
     ScrubWrongStage    = "Let her cool and empty before you scrub.",
     RepairDone         = "Patched her up. Condition: ",
     RepairNotNeeded    = "She's in good order - nothing to mend.",
-    RepairNoItem       = "You need a spare barrel kit to mend her.",
+    RepairNoItem       = "You need a barrel repair kit to mend her.",
+    RepairKitDescription = "Repair kit: %d/%d uses left.",   -- uses left, uses in a new kit
+    RepairKitUsedUp      = "Your repair kit is used up.",
+    RepairsLeft        = " - she'll take %d more repair(s).", -- added after RepairDone (MaxRepairs)
+    RepairLastOne      = " - that was her last repair.",      -- added after RepairDone (MaxRepairs)
+    BatchesLeft        = " %d batch(es) left in her.",        -- added after the above (MaxBatches)
+    RepairLimitReached = "She's been patched too many times - she can't be mended again.",
+    BatchLimitReached  = "She's run her last batch - the staves give out.",
 
-    ---o[ Trouble at the still (each incident's own words are in still.lua) ]o---
+    ---o[ Trouble at the still ]o---
     IncidentFailed = "You botched it - have another go.",
     IncidentBusy   = "Somebody's already seeing to it.",
     IncidentGauge  = "TROUBLE",
@@ -263,7 +267,6 @@ Config.Text = {
     BottleUntastedDescription = "%s, untasted. Fresh off the still - sample it to know its grade.", -- recipe (Config.Tasting.HideUntasted)
     BottleAgedUntasted     = "%s, untasted. Aged %d minutes in the crate: %s.", -- recipe, minutes, maturity
 
-    ---o[ Tasting (Config.Tasting) ]o---
     ---o[ The market - buyers and the ledger (Config.Market) ]o---
     Market = {
         Title      = "The Buyer's Ledger",
@@ -372,11 +375,20 @@ Config.Text = {
     UpgradeFitted     = "%s fitted to the still.",
     UpgradeAlready    = "This still already has %s fitted.",
     UpgradeNotAtStill = "Stand at your still to fit that.",
+    UpgradeNoItem     = "You need a %s in your satchel to fit it.",           -- upgrade label
+    UpgradeNotUsed    = "A %s does nothing on this server.",                  -- upgrade label (its `requires` is off)
+    FittingsBook      = {                                                     -- the Fittings slip beside the still's book
+        Title     = "FITTINGS",
+        Count     = "%d of %d",                                               -- fitted, on the slip
+        Hint      = "Fit one with the part in your satchel. It stays on the still.",
+        Fitted    = "Fitted",
+        Fit       = "Fit",
+    },
     SpentMashGot      = "%dx spent mash left in the barrel - you scoop it out.",
     SpentMashNoHorse  = "Your horse needs to be right beside you.",
     SpentMashFed      = "Your horse wolfs down the mash.",
 
-    ---o[ Barrel stages - label on the gauge / book, hint = what to do now ]o---
+    ---o[ Barrel stages ]o---
     Stages = {
         IDLE       = { label = "Cold",               hint = "Pick the fuel (Left / Right) and put it on (E) to warm her up." },
         FREEZE     = { label = "Add Ingredients",    hint = "Store ingredients (G), then open the book (Enter) and start mixing." },
@@ -715,7 +727,7 @@ Config.Text = {
         Causes = { pressure = "Pressure burst", heat = "Overheated", overfed = "Overfed fire in the final push" },
     },
 
-    ---o[ The Kasippu radial menu (GSC.Radial) - the actions reuse the prompt labels below ]o---
+    ---o[ The Kasippu radial menu ]o---
     Radial = {
         Barrel    = "Still",                          -- wedge titles, when more than one place offers something
         Crate     = "Crate",
@@ -767,7 +779,7 @@ Config.PromptsTxt = {
     CrewInviteAcceptPrompt   = "Join",
     CrewInviteDeclinePrompt  = "Decline",
 
-    ---o[ At the aging crate (the tend prompt uses the activity's label) ]o---
+    ---o[ At the aging crate ]o---
     CratePromptTitle         = "Aging Crate",
     CrateStorePrompt         = "Lay Down A Bottle",
     CrateTakePrompt          = "Take Out A Bottle",

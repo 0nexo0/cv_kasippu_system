@@ -46,7 +46,7 @@ Shared.BarrelStage = {
     IDLE       = "IDLE",
     FREEZE     = "FREEZE",
     MIXING     = "MIXING",
-    FERMENTING = "FERMENTING", -- the wash works in real time; lighting the fire under it moves on
+    FERMENTING = "FERMENTING",
     MID_CLIMB  = "MID_CLIMB",
     HEAT_PAUSE = "HEAT_PAUSE",
     FINAL_PUSH = "FINAL_PUSH",
@@ -54,7 +54,7 @@ Shared.BarrelStage = {
     COMPLETED  = "COMPLETED",
 }
 
----o[ The VORP core, fetched once: an export call per GetChar was paid 90x in every all-players loop ]o---
+---o[ The VORP core, fetched once ]o---
 local VORPcore = nil
 
 function Shared.GetChar(src)
@@ -81,6 +81,13 @@ function Shared.TableCount(t)
     local count = 0
     for _ in pairs(t) do count = count + 1 end
     return count
+end
+
+---o[ Does this barrel upgrade do anything here? `requires` names a Config section that must be Enabled ]o---
+function Shared.UpgradeUsable(up)
+    local need = up and up.requires
+    if not need then return true end
+    return type(Config[need]) == 'table' and Config[need].Enabled == true
 end
 
 ---o[ Is this point inside the box? ]o---
@@ -118,8 +125,7 @@ function Shared.HeadingTowards(fromX, fromY, toX, toY)
     return math.deg(math.atan(-dx, dy)) % 360.0
 end
 
----o[ Guard models: the configured one first, then fallbacks if it will not load ]o---
--- The server checks a reported guard against this same list
+---o[ Guard models ]o---
 function Shared.GuardModels()
     return {
         (Config.GuardSpawnConf or {}).PedModel,
@@ -158,8 +164,7 @@ function Shared.BuildAutoPosts(zoneData)
         posts[i] = { x = s[1], y = s[2], heading = Shared.HeadingTowards(s[1], s[2], c.x, c.y) }
     end
 
-    ---o[ Inside the yard: an even N x N grid, each man facing the middle (the fence posts cover the edges) ]o---
-    -- AutoPostInner (a yard's own innerPosts wins). 0 = fence posts only. Client and server must agree.
+    ---o[ Inside the yard ]o---
     local inner = math.floor(tonumber(zoneData.innerPosts or conf.AutoPostInner) or 0)
     for ix = 1, inner do
         for iy = 1, inner do
@@ -176,7 +181,7 @@ function Shared.BuildAutoPosts(zoneData)
     return posts
 end
 
----o[ The walking circuit: a rectangle around the outside of the yard ]o---
+---o[ The walking circuit ]o---
 function Shared.BuildZonePerimeter(zone, margin, perSide)
     local size = zone.size
     if not size then return {} end
