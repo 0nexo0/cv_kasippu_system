@@ -78,6 +78,14 @@ up to date (green), outdated with the changelog lines from that JSON (red), or a
   bottle at the buyer, and a first-run spirit in the mash. Before, an aged or soured Raa bottle from before the
   rename was refused by every buyer, and a still mid-brew on `raaa` lost its recipe.
 
+- **Guard news no longer goes to the whole server.** Every guard death, respawn and spawn check sent the yard's
+  roster to all players, and every alarm went to all players too, even ones nowhere near the yard. Both now go only
+  to players within the yard's despawn distance + 100 m (`GSC.Roster.SendNear`, `features/guards/server/roster.lua`).
+  A player who leaves drops their copy of the roster (`GSC.Guards.ForgetRoster`) and asks for a fresh one on the way
+  back, as they already did on first arrival. Guard AI, detection and ownership are unchanged. The audit found them
+  already distributed: each client only senses its own player, the AI only runs on the client that owns the ped,
+  raycasts only run while the player is in the yard, and kill and spawn reports are checked by the server.
+
 ### Removed
 - **Unused NUI files (about 5.2 MB less for every player to download on first join):** `arakku.png`,
   `arakku_text.png`, `book.png`, `boxnew.png`, `kasippu.png`, `recipie_paper.png`, and the fonts

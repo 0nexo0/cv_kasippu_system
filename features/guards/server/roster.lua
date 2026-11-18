@@ -154,6 +154,28 @@ local function ZoneRanges(zoneData)
     return spawn, reach
 end
 
+---o[ Yard news goes only to players close enough to have its guards on their map, not to the whole server ]o---
+local SEND_MARGIN = 100.0 -- metres past the despawn distance: a player walking off still hears the last change
+
+function Roster.SendNear(zoneData, eventName, ...)
+    local _, reach = ZoneRanges(zoneData)
+    local limit = reach + SEND_MARGIN
+    local limitSq = limit * limit
+    local cx, cy = zoneData.coords.x, zoneData.coords.y
+
+    for _, playerId in ipairs(GetPlayers()) do
+        local target = tonumber(playerId)
+        local ped = target and GetPlayerPed(playerId)
+        if ped and ped ~= 0 then
+            local p = GetEntityCoords(ped)
+            local dx, dy = p.x - cx, p.y - cy
+            if (dx * dx + dy * dy) <= limitSq then
+                TriggerClientEvent(eventName, target, ...)
+            end
+        end
+    end
+end
+
 ---o[ Is any player close enough to have this yard's guards on his map? ]o---
 local function AnyPlayerNear(zoneData)
     local _, reach = ZoneRanges(zoneData)
@@ -185,7 +207,18 @@ local function BroadcastRoster(zoneName, target)
     local roster = ZoneRoster[zoneName]
     if not roster then return end
 
-    TriggerClientEvent('gsc_kassippu_alert:client:zoneRoster', target or -1, RosterPayload(zoneName, roster))
+    local payload = RosterPayload(zoneName, roster)
+    if target then
+        return TriggerClientEvent('gsc_kassippu_alert:client:zoneRoster', target, payload)
+    end
+
+    ---o[ Players further out ask for it themselves when they come in range ]o---
+    local _, zoneData = FindZone(zoneName)
+    if zoneData then
+        Roster.SendNear(zoneData, 'gsc_kassippu_alert:client:zoneRoster', payload)
+    else
+        TriggerClientEvent('gsc_kassippu_alert:client:zoneRoster', -1, payload)
+    end
 end
 
 ---o[ AN UNGUARDED YARD HEARS THE NEXT BREAK-IN ]o---

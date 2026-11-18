@@ -1042,9 +1042,16 @@ function Guards.Spawn(zoneIndex, zoneData)
     ReconcileZoneGuards(zoneIndex, zoneData)
 end
 
-function Guards.Despawn(zoneIndex)
-    if not zoneGuards[zoneIndex] then return end
+---o[ Out of range the server stops sending roster news, so a kept copy goes stale: ask afresh on the way back ]o---
+function Guards.ForgetRoster(zoneIndex)
+    zoneRoster[zoneIndex] = nil
+    rosterAsked[zoneIndex] = nil
+end
 
+function Guards.Despawn(zoneIndex)
+    if not zoneGuards[zoneIndex] then return Guards.ForgetRoster(zoneIndex) end
+
+    Guards.ForgetRoster(zoneIndex)
     zoneGuards[zoneIndex] = nil
     zoneAlertUntil[zoneIndex] = nil
     ClearSuspicion(zoneIndex)

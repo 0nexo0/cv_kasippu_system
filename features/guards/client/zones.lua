@@ -184,8 +184,10 @@ CreateThread(function()
                     leftZoneAt[i] = nil
                     inSpawnRange = true
                     GSC.Guards.Spawn(i, zoneData)
-                elseif distSq > ranges[i].despawnSq and GSC.Guards.AreStaffed(i) then
-                    if GSC.Guards.IsHunting(i) then
+                elseif distSq > ranges[i].despawnSq then
+                    if not GSC.Guards.AreStaffed(i) then
+                        GSC.Guards.ForgetRoster(i)
+                    elseif GSC.Guards.IsHunting(i) then
                         leftZoneAt[i] = nil
                     else
                         local now = GetGameTimer()
