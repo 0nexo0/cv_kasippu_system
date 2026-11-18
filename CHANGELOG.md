@@ -70,6 +70,19 @@ up to date (green), outdated with the changelog lines from that JSON (red), or a
 
 ### Fixed
 - Hidden barrel and crate gauges no longer keep a warning animation running behind them (FPS).
+- **Pol Raa sold at the $4 fallback price.** `Config.Market.Base` still used the old key `raaa`; it is now
+  `pol_raa`, so Raa sells at its $5 base again.
+- **Stills, bottles and crates saved under the old recipe key `raaa` work again.** New
+  `Config.RecipeAliases = { raaa = "pol_raa" }` (`config/recipes.lua`) and `Shared.RecipeKey()`. They are used where a
+  saved key is read back: a still loaded from the database, a fresh or aged bottle, a bottle in a crate, a soured
+  bottle at the buyer, and a first-run spirit in the mash. Before, an aged or soured Raa bottle from before the
+  rename was refused by every buyer, and a still mid-brew on `raaa` lost its recipe.
+
+### Removed
+- **Unused NUI files (about 5.2 MB less for every player to download on first join):** `arakku.png`,
+  `arakku_text.png`, `book.png`, `boxnew.png`, `kasippu.png`, `recipie_paper.png`, and the fonts
+  `WesternBangBang-Regular.woff`, `crock.ttf` and `OldStandard-*` (with its licence). Nothing in the HTML, CSS, JS or
+  config pointed at them. The book only uses PT Serif.
 
 ### Added
 - **`Items/items.sql`**: every item the script uses (27), as one `INSERT IGNORE INTO items` for vorp_inventory.

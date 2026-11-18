@@ -6,6 +6,12 @@ function Shared.Debug(...)
     end
 end
 
+---o[ A recipe key saved by an older version, under its current name (Config.RecipeAliases) ]o---
+function Shared.RecipeKey(key)
+    local aliases = Config and Config.RecipeAliases
+    return (aliases and key and aliases[key]) or key
+end
+
 function Shared.PlainText(text)
     if type(text) ~= "string" then return text end
     text = text:gsub("~%a+~", ""):gsub("%s%s+", " ")

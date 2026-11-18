@@ -1,5 +1,6 @@
 ---o[ Recipe Book ]o---
 Config.DefaultRecipe = "pol_raa" -- recipe the book opens on
+Config.RecipeAliases = { raaa = "pol_raa" } -- old recipe keys still saved on stills, bottles and crates
 
 Config.RecipeBook = {
     ItemImages = "nui://vorp_inventory/html/img/items/%s.png", -- item pictures in the book (%s = item name)

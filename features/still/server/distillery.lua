@@ -466,7 +466,7 @@ function Distillery.LoadBarrelsFromDB()
                     end
                     BarrelBrewProgress[uid] = tonumber(v.progress) or 0
                     BarrelRemainingBottles[uid] = tonumber(v.remaining_bottles) or 0
-                    BarrelLoaded[uid] = v.recipe
+                    BarrelLoaded[uid] = Shared.RecipeKey(v.recipe)
 
                     BarrelTargetQuality[uid] = v.quality
                     BarrelUsageCount[uid] = tonumber(v.usage_count) or 0

@@ -184,7 +184,7 @@ function Market.Offer(item, buyer, trust)
 
     local recipeKey, quality, soured = nil, nil, meta.soured == true
     if soured then
-        recipeKey, quality = meta.recipe, "NORMAL"
+        recipeKey, quality = Shared.RecipeKey(meta.recipe), "NORMAL"
         if (conf.SouredRate or 0) <= 0 then return nil end
     else
         recipeKey, quality = GSC.Crates.BottleRecipe(item)

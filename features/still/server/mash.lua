@@ -218,9 +218,10 @@ local function SpiritOf(entry)
     local meta = entry.metadata or {}
     if meta.aged or meta.soured then return "aged" end
 
-    local recipe = meta.recipe and Config.Recipes[meta.recipe]
+    local recipeKey = Shared.RecipeKey(meta.recipe)
+    local recipe = recipeKey and Config.Recipes[recipeKey]
     if recipe and not recipe.secondRun and meta.quality then
-        return { recipe = meta.recipe, quality = meta.quality, tainted = meta.tainted == true }
+        return { recipe = recipeKey, quality = meta.quality, tainted = meta.tainted == true }
     end
 
     local known = SpiritLookup()[tostring(entry.name or "")]

@@ -39,7 +39,7 @@ Config.Market = {
     Blips = { Enabled = true, Sprite = nil, Scale = 0.7, Name = "Moonshine Buyer" },
 
     ---o[ The price ]o---
-    Base        = { kasippu = 6.0, raaa = 5.0 }, -- $ for one Regular, Good, fresh, tasted bottle
+    Base        = { kasippu = 6.0, pol_raa = 5.0 }, -- $ for one Regular, Good, fresh, tasted bottle (keys = config/recipes.lua)
     DefaultBase = 4.0,  -- a recipe not listed above
     Strength    = { LIGHT = 0.8, REGULAR = 1.0, STRONG = 1.25 },   -- by strength key (the proof)
     Grade       = { NORMAL = 0.75, GOOD = 1.0, PERFECT = 1.4 },    -- by grade

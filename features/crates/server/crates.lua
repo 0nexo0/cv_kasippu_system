@@ -29,7 +29,7 @@ local function QualityLabel(quality)
 end
 
 local function RecipeLabel(recipeKey, fallback)
-    local recipe = Config.Recipes[recipeKey]
+    local recipe = Config.Recipes[Shared.RecipeKey(recipeKey)]
     return recipe and recipe.label or fallback or tostring(recipeKey)
 end
 
@@ -138,12 +138,13 @@ local function ResolveFreshBottle(item)
     local meta = item.metadata or {}
     if meta.aged or meta.soured then return nil end
 
-    if meta.recipe and meta.quality then
-        local recipe = Config.Recipes[meta.recipe]
+    local recipeKey = Shared.RecipeKey(meta.recipe)
+    if recipeKey and meta.quality then
+        local recipe = Config.Recipes[recipeKey]
         local reward = recipe and recipe.rewards and recipe.rewards[meta.quality]
-        local strength = meta.strength and GSC.Mash.Strength(meta.recipe, meta.strength)
+        local strength = meta.strength and GSC.Mash.Strength(recipeKey, meta.strength)
         if reward and (reward.item == item.name or (strength and strength.item == item.name)) then
-            return meta.recipe, meta.quality
+            return recipeKey, meta.quality
         end
     end
 
@@ -174,7 +175,7 @@ end
 function Crates.BottleRecipe(item)
     local meta = item and item.metadata or {}
     if meta.soured then return nil end
-    if meta.aged and meta.recipe and meta.quality then return meta.recipe, meta.quality end
+    if meta.aged and meta.recipe and meta.quality then return Shared.RecipeKey(meta.recipe), meta.quality end
     return ResolveFreshBottle(item)
 end
 
@@ -288,7 +289,7 @@ end
 
 ---o[ What a bottle comes out of the crate as ]o---
 local function ResolveTakenBottle(crate, bottle, now)
-    local recipeKey, quality = bottle.recipe, bottle.quality
+    local recipeKey, quality = Shared.RecipeKey(bottle.recipe), bottle.quality
     local recipe = Config.Recipes[recipeKey]
     local recipeLabel = BottleName(bottle)
 
