@@ -24,7 +24,11 @@ Config.TreeClimbConf = {
     ---o[ Position on the trunk ]o---
     ClimbStepHeight    = 1.5,  -- metres per rung
     ClimbBaseOffset    = 1.0,  -- attach height at ground level (metres)
-    ClimbForwardOffset = 0.45, -- how far out from the trunk (metres)
+    SinkDepth          = 2.0,  -- metres the tree model is pushed into the ground (hides the roots).
+                               -- The climb prompt is measured flat, so it still shows at the trunk
+    ClimbForwardOffset = 0.32, -- how far out from the trunk centre (metres): lower = tighter on the bark
+    ClimbSideOffset    = 0.0,  -- metres left (-) / right (+) of the trunk centre
+                               -- tune live with /climboffset <forward> [side] (needs Config.DebugTreeCommands)
     ClimbUpSyncMs      = 100,  -- ms between height updates to other players going up (false = per rung)
     ClimbDownSyncMs    = 100,  -- ...and coming down
 

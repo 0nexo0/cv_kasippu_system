@@ -18,20 +18,46 @@ local lastGripCheckEnd = 0
 local StartClimbSequence, HandleFall, ClimbDownSequence
 
 ---oo[ Attach Height -> Local Z On The Trunk ]oo---
-function Climb.AttachZForHeight(heightSteps)
+---o[ The trunk is sunk SinkDepth into the ground: the climb starts that much higher up it,
+---   and still ends at the crown (which sank with it), so each rung is a little shorter ]o---
+local function ClimbSpan()
     local conf = Config.TreeClimbConf
-    return (conf.ClimbBaseOffset or 1.0) + ((heightSteps or 0) * (conf.ClimbStepHeight or 1.5))
+    local steps = math.max(1, conf.ClimbMaxSteps or 8)
+    local base = conf.ClimbBaseOffset or 1.0
+    local bottom = base + (conf.SinkDepth or 0.0)
+    local top = base + steps * (conf.ClimbStepHeight or 1.5)
+    return bottom, top, steps
 end
----oo[ Hanging On The Trunk ]oo---
-local function AttachAtHeight(ped, treeEntity, heightSteps)
+
+function Climb.AttachZForHeight(heightSteps)
+    local bottom, top, steps = ClimbSpan()
+    return bottom + ((heightSteps or 0) / steps) * (top - bottom)
+end
+
+---o[ Metres per rung, after the sink ]o---
+function Climb.RungHeight()
+    local bottom, top, steps = ClimbSpan()
+    return math.max(0.1, (top - bottom) / steps)
+end
+---oo[ Where On The Trunk He Hangs: side / out from the centre ]oo---
+function Climb.TrunkOffset()
     local conf = Config.TreeClimbConf
+    return conf.ClimbSideOffset or 0.0, conf.ClimbForwardOffset or 0.32
+end
+
+---oo[ Hanging On The Trunk ]oo---
+local lastAttach = nil -- { tree, steps }: lets /climboffset re-seat him on the spot
+
+local function AttachAtHeight(ped, treeEntity, heightSteps)
     local z = Climb.AttachZForHeight(heightSteps)
+    local side, forward = Climb.TrunkOffset()
 
     AttachEntityToEntity(ped, treeEntity, 0,
-        0.0, conf.ClimbForwardOffset or 0.45, z,
+        side, forward, z,
         0.0, 0.0, 180.0,
         false, false, false, false, 2, true)
 
+    lastAttach = { tree = treeEntity, steps = heightSteps }
     GSC.TreeCamera.UpdateHeight(z)
     return z
 end
@@ -88,9 +114,9 @@ local function TrackClimbAnim(ped)
 end
 
 local function PinAtHeight(ped, treeEntity, heightSteps)
-    local conf = Config.TreeClimbConf
     local z = Climb.AttachZForHeight(heightSteps)
-    local pos = GetOffsetFromEntityInWorldCoords(treeEntity, 0.0, conf.ClimbForwardOffset or 0.45, z)
+    local side, forward = Climb.TrunkOffset()
+    local pos = GetOffsetFromEntityInWorldCoords(treeEntity, side, forward, z)
 
     local a = climbAnim
     if a then
@@ -116,6 +142,24 @@ local function PinAtHeight(ped, treeEntity, heightSteps)
 
     lastPinAt = GetGameTimer()
     return result
+end
+
+---oo[ Dev: tune the trunk offset live - /climboffset <forward> [side] ]oo---
+if Config.DebugTreeCommands then
+    RegisterCommand('climboffset', function(_, args)
+        local conf = Config.TreeClimbConf
+        local forward, side = tonumber(args[1]), tonumber(args[2])
+        if forward then conf.ClimbForwardOffset = forward end
+        if side then conf.ClimbSideOffset = side end
+
+        local ped = PlayerPedId()
+        if lastAttach and DoesEntityExist(lastAttach.tree) and IsEntityAttachedToEntity(ped, lastAttach.tree) then
+            AttachAtHeight(ped, lastAttach.tree, lastAttach.steps)
+        end
+
+        local s, f = Climb.TrunkOffset()
+        print(string.format("[kasippu] ClimbForwardOffset = %.2f, ClimbSideOffset = %.2f", f, s))
+    end, false)
 end
 
 ---oo[ Climbing Up: Keep Everyone Updated Between Minigames ]oo---
@@ -267,7 +311,8 @@ function Climb.TryStart(treeEntity, treeData)
         local elapsed = GetGameTimer() - startedAt
         local offset = GetEntityCoords(PlayerPedId()) - treeCoords
 
-        if ((offset.x * offset.x) + (offset.y * offset.y) + (offset.z * offset.z)) > cancelSq then
+        -- flat: the trunk's origin sits SinkDepth below the ground
+        if ((offset.x * offset.x) + (offset.y * offset.y)) > cancelSq then
             walkedOff = true
             break
         end
@@ -786,7 +831,7 @@ function ClimbDownSequence(ped, treeEntity)
 
     local conf = Config.TreeClimbConf
     local anim = Config.AnimConf
-    local stepHeight = conf.ClimbStepHeight or 1.5
+    local stepHeight = Climb.RungHeight()
     local speed = math.max(0.2, conf.DescendSpeed or 2.4)
     local easeFrom = math.max(0.0, conf.DescendEaseDistance or 1.5)
 

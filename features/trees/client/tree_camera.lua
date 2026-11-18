@@ -106,12 +106,12 @@ function Camera.UpdateHeight(attachZ)
     if not tree or not DoesEntityExist(tree) then return end
 
     local camConf = Config.UpdateCamHeightConf
-    local forward = Config.TreeClimbConf.ClimbForwardOffset or 0.45
+    local side, forward = GSC.Climb.TrunkOffset()
 
-    local target = GetOffsetFromEntityInWorldCoords(tree, 0.0, forward, attachZ or 0.0)
+    local target = GetOffsetFromEntityInWorldCoords(tree, side, forward, attachZ or 0.0)
 
     local camPos = GetOffsetFromEntityInWorldCoords(tree,
-        camConf.SideOffset or 1.1,
+        side + (camConf.SideOffset or 1.1),
         forward + (camConf.Distance or 3.2),
         (attachZ or 0.0) + (camConf.HieghtOffSet or 0.7))
 

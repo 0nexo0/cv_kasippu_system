@@ -501,7 +501,8 @@ function Mash.Evaluate(recipeKey, stored, coconutStacks, now)
         else
             freshText = string.format(S.Stale, penaltyShown)
         end
-        table.insert(result.lines, 4, { S.Freshness, freshText })
+        -- after the fruit / spirit line when there is one; a recipe with neither (Pol Raa) has only 2 lines
+        table.insert(result.lines, math.min(4, #result.lines + 1), { S.Freshness, freshText })
     end
 
     result.ok = #problems == 0

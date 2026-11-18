@@ -71,17 +71,19 @@ local function DespawnTreeBucket(uid)
 end
 
 ---oo[ Check if tree exists at coordinates ]oo---
-local function DoesTreeExistAtCoords(coords)
-    local entity = spawnedByUid[Shared.GenerateTreeUID(coords)]
+local function DoesTreeExist(uid)
+    local entity = spawnedByUid[uid]
     return entity ~= nil and DoesEntityExist(entity)
 end
 
 ---oo[ Spawn Tree at Specific Coordinates ]oo---
-function Trees.Spawn(coords, heading, persist)
+---o[ uid: the server's id for this tree. Only built from coords when none is given ]o---
+function Trees.Spawn(coords, heading, persist, uid)
     heading = heading or 0.0
     persist = persist or false
+    uid = uid or Shared.GenerateTreeUID(coords)
 
-    if DoesTreeExistAtCoords(coords) then
+    if DoesTreeExist(uid) then
         return nil
     end
 
@@ -90,7 +92,6 @@ function Trees.Spawn(coords, heading, persist)
         return nil
     end
 
-    local uid = Shared.GenerateTreeUID(coords)
     local cached = treeDataCache[uid]
 
     local spawnZ = (cached and cached.groundZ) or coords.z
@@ -103,10 +104,16 @@ function Trees.Spawn(coords, heading, persist)
     end
 
     SetEntityHeading(treeEntity, heading)
-    if not (cached and cached.groundZ) then
-        PlaceObjectOnGroundProperly(treeEntity)
-        if cached then cached.groundZ = GetEntityCoords(treeEntity).z end
+    local groundZ = cached and cached.groundZ
+    if not groundZ then
+        PlaceObjectOnGroundProperly(treeEntity) -- for the ground height only...
+        groundZ = GetEntityCoords(treeEntity).z
+        if cached then cached.groundZ = groundZ end
     end
+    -- push the model down so its roots are under the ground (the prompt still uses the DB coords)
+    local sink = Config.TreeClimbConf.SinkDepth or 0.0
+    SetEntityCoordsNoOffset(treeEntity, coords.x, coords.y, groundZ - sink, false, false, false)
+    SetEntityRotation(treeEntity, 0.0, 0.0, heading, 2, true) -- ...it also tilts to the slope: stand it straight
     FreezeEntityPosition(treeEntity, true)
     SetModelAsNoLongerNeeded(modelHash)
 
@@ -185,10 +192,15 @@ function Trees.GetNearest(maxDistance)
     local nearestDist = maxDistance + 1
     local nearestData = nil
 
+    -- flat distance to the trunk, plus a height allowance: the tree is sunk SinkDepth into
+    -- the ground, and its stored z may sit anywhere between the ground and the sunk base
+    local maxRise = (Config.TreeClimbConf.SinkDepth or 0.0) + 3.0
+
     for entity, data in pairs(spawnedTrees) do
         if DoesEntityExist(entity) then
-            local dist = #(playerCoords - data.coords)
-            if dist < nearestDist then
+            local dx, dy = playerCoords.x - data.coords.x, playerCoords.y - data.coords.y
+            local dist = math.sqrt((dx * dx) + (dy * dy))
+            if dist < nearestDist and math.abs(playerCoords.z - data.coords.z) <= maxRise then
                 nearestDist = dist
                 nearestEntity = entity
                 nearestData = data
@@ -234,7 +246,7 @@ CreateThread(function()
                 if not entity then
                     if distSq <= streamSq then
                         if spawnedThisPass < maxSpawns then
-                            if Trees.Spawn(treeInfo.coords, treeInfo.heading, treeInfo.persist) then
+                            if Trees.Spawn(treeInfo.coords, treeInfo.heading, treeInfo.persist, uid) then
                                 spawnedThisPass = spawnedThisPass + 1
                             else
                                 pendingSpawn = true -- model still loading, retry shortly
@@ -278,7 +290,7 @@ end)
 RegisterNetEvent('nx_trees:client:spawnTree')
 AddEventHandler('nx_trees:client:spawnTree', function(uid, coords, heading)
     local treeCoords = vector3(coords.x, coords.y, coords.z)
-    local uid_key = Shared.GenerateTreeUID(treeCoords)
+    local uid_key = uid or Shared.GenerateTreeUID(treeCoords) -- the server's uid: the bucket is keyed on it
 
     if not treeDataCache[uid_key] then
         treeDataCache[uid_key] = {
@@ -298,7 +310,9 @@ AddEventHandler('nx_trees:client:loadTrees', function(trees)
     if trees and #trees > 0 then
         for _, tree in ipairs(trees) do
             local coords = vector3(tree.x, tree.y, tree.z)
-            local uid = Shared.GenerateTreeUID(coords)
+            -- the DB uid, not one rebuilt from x/y/z: FLOAT coords can round to a different
+            -- uid, and then the server never answers this tree's bucket sync or collect
+            local uid = tree.uid or Shared.GenerateTreeUID(coords)
 
             treeDataCache[uid] = {
                 uid = uid,

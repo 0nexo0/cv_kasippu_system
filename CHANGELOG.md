@@ -20,6 +20,17 @@ up to date (green), outdated with the changelog lines from that JSON (red), or a
 ## [Unreleased]
 
 ### Changed
+- **Coconut tree roots are hidden.** New `Config.TreeClimbConf.SinkDepth` (2.0): the tree model is pushed this many
+  metres into the ground on spawn. The climb now starts `SinkDepth` higher up the trunk and still ends at the crown
+  (which sank with it), so the rung count is the same and each rung is a little shorter. `SinkDepth = 0` gives the
+  old placement.
+  - The climb prompt (`Trees.GetNearest`) now uses the flat distance to the trunk, and accepts the player up to
+    `SinkDepth + 3` m above or below the tree's stored z, so it shows whether the z is at ground level or lowered.
+    The "walked off before climbing" check is flat too. The server's reach checks are already flat.
+- **Climber sits tighter on the trunk.** `Config.TreeClimbConf.ClimbForwardOffset` 0.45 → 0.32, and a new
+  `ClimbSideOffset` (default 0.0) moves him left / right of the trunk centre. Both are used for the attach, the
+  pin other players see, and the climb camera. With `Config.DebugTreeCommands = true`,
+  `/climboffset <forward> [side]` changes them live while climbing (console prints the values to copy into config).
 - **Code clean-up for release.** Long explanation comments removed; every section keeps one short
   `---o[ Title ]o---` line. Config files keep their one-line setting notes. No setting or behaviour changed.
 - **`/removetree` always works for tree admins.** The dev tree commands (`spawntree`, `listtreesdb`,
@@ -69,6 +80,15 @@ up to date (green), outdated with the changelog lines from that JSON (red), or a
   any `coconut_water` players still carry no longer counts at the still.
 
 ### Fixed
+- **Pol Raa could not be previewed or mixed (`mash.lua:504: bad argument #2 to 'insert' (position out of
+  bounds)`).** The mix slip put the freshness line at position 4, but a recipe with no fruit and no spirit line
+  (Pol Raa, now that its sap comes from the pot) only has 2 lines, so the insert threw inside the
+  `getCustomInventoryItems` callback and the recipe book / mix never answered. The line now goes at position 4 or the
+  end, whichever comes first.
+- **Coconut trees stand straight on slopes.** `PlaceObjectOnGroundProperly` also tilted the tree to the ground's
+  slope, but only on its first spawn (later spawns reused the cached ground height and stood upright). The tree is
+  now set upright (`SetEntityRotation` 0, 0, heading) every spawn, so the climber, the pot and the camera, which all
+  follow the tree's axes, are straight too.
 - **Database tables file is back: `database/cv_kasippu_tables.sql`.** The resource ran `database/schema.sql` on
   start, but that file was missing from the build, so a new server got no tables. The new file creates only the
   5 tables the code uses (`gsc_kasippu_trees`, `gsc_kassippu_barrels`, `gsc_kassippu_crates`, `gsc_kassippu_trust`,
@@ -81,6 +101,11 @@ up to date (green), outdated with the changelog lines from that JSON (red), or a
   the tables file runs, an existing `gsc_climb_trees` is renamed in place (`RENAME TABLE`), so trees and their pot
   fill carry over. If both tables already exist, the new one is used and a yellow note says to drop the old one by
   hand.
+- **Some coconut trees stuck on "checking bucket..." and could not be collected.** The client rebuilt each
+  tree's uid from its x/y/z instead of using the uid the server sent. When the stored coords round differently
+  from the uid (e.g. uid `..._-1062.80_..._55.44`, x `-1062.79`, z `55.43`), the client asked about a tree the
+  server did not know, and the server silently ignored the bucket sync, collect and delete. The client now keeps
+  the database uid (`features/trees/client/trees.lua`).
 - **Garbled text under prompt groups (e.g. "er Sap" under the coconut tree prompts).** Group labels were built
   once with `VarString` and reused every frame, but a VarString points into a scratch buffer the game reuses,
   so other text overwrote it. Labels now keep the plain text and build the VarString on the frame it is shown
