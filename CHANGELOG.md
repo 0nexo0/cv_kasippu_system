@@ -87,6 +87,11 @@ up to date (green), outdated with the changelog lines from that JSON (red), or a
   raycasts only run while the player is in the yard, and kill and spawn reports are checked by the server.
 
 ### Removed
+- **Radial menu icons trimmed: `nui/vendor/radialmenu.js` 1.1 MB → 66 KB.** Its `icos` table carried every Font
+  Awesome Free icon (1,385); it now keeps the 71 whose names appear in the resource's Lua or `nui/script.js`
+  (every wedge icon, the `circle-question` fallback, and a few harmless extra matches). The page now has far less JS
+  to parse when it loads. To use a new icon, copy its line from the original ez_radialmenu `RadialMenu.js`
+  (see the file header). An unknown name still shows the question-mark icon, as before.
 - **Unused NUI files (about 5.2 MB less for every player to download on first join):** `arakku.png`,
   `arakku_text.png`, `book.png`, `boxnew.png`, `kasippu.png`, `recipie_paper.png`, and the fonts
   `WesternBangBang-Regular.woff`, `crock.ttf` and `OldStandard-*` (with its licence). Nothing in the HTML, CSS, JS or
