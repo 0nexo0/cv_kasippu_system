@@ -59,7 +59,7 @@ Config.TreeClimbConf.StreamDistance   = 50.0 -- metres: trees spawn within this
 Config.TreeClimbConf.DespawnDistance  = 90.0 -- metres: removed past this (keep 20+ above StreamDistance)
 Config.TreeClimbConf.MaxSpawnsPerPass = 2    -- trees created per pass
 
----o[ Coconut Water Pots ]o---
+---o[ Coconut Flower Sap Pots ]o---
 Config.CoconutBucketConf = {
     ---o[ The pot prop ]o---
     BucketModel    = "p_potclay04x",
@@ -73,8 +73,8 @@ Config.CoconutBucketConf = {
     PotCapacityMl    = 1000,                   -- most ml one pot holds; part-filled pots are topped up first, then empty ones
 
     ---o[ Filling ]o---
-    FillIntervalMinutes    = 1,   -- minutes between fills
-    FillPercentPerInterval = 10,  -- % added each interval (a full 1000 ml pot in 10 min = 2 Raa batches)
+    FillIntervalMinutes    = 2,   -- minutes between fills
+    FillPercentPerInterval = 5,   -- % added each interval (a full 1000 ml pot in 40 min = 2 Raa batches)
     MaxFillPercent         = 100,
     MlPerPercent           = 10,  -- 1% = 10ml, 100% = 1000ml
 
@@ -90,7 +90,7 @@ Config.CoconutBucketConf = {
 
     ---o[ After collecting ]o---
     CollectAnimSeconds    = 6,                                       -- collecting animation (sec)
-    RegrowCooldownSeconds = Config.TreeClimbConf.TreeGrowingTime,    -- pot stays empty this long (sec)
+    RegrowCooldownSeconds = 300,    -- pot stays empty this long (sec)
 
     ---o[ Database ]o---
     DbSnapshotMinutes = 0, -- 0 = save only on change (recommended)
@@ -116,9 +116,7 @@ Config.TreeItemsSearchMinigameConf = {
 
 ---o[ Tree Search Rewards ]o---
 Config.TreeItemsSearchRewards = {
-    { item = Config.Items.Banana,     label = "Banana",            chance = 60, amount = { min = 1, max = 3 } },
-    { item = Config.Items.Water,      label = "Water",             chance = 30, amount = { min = 1, max = 1 } },
-    { item = Config.Items.BarrelKit,  label = "Kasiya Barrel Kit", chance = 10, amount = { min = 1, max = 1 } },
+    { item = Config.Items.coconut,     label = "Coconut",            chance = 60, amount = { min = 1, max = 3 } },
 }
 
 ---o[ Climb Camera ]o---

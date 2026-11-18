@@ -43,7 +43,7 @@ Config.InteractKeys = {
     ---o[ Palm trees ]o---
     TreeClimbKey           = 0xD9D0E1C0,         -- [Space]       hold to climb up / climb down
     TreeSearchKey          = 0x760A9C6F,         -- [G]           search the crown
-    TreeCoconutCollectKey  = 0xE30CD707,         -- [R]           collect coconut water
+    TreeCoconutCollectKey  = 0xE30CD707,         -- [R]           collect coconut flower sap
 
     ---o[ The Kasippu radial menu ]o---
     RadialMenuKey          = 0x3C0A40F2,         -- [F6]          opens the menu only with Config.Radial.KeyMapping = nil (else F2 does)

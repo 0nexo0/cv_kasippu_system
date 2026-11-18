@@ -34,6 +34,32 @@ up to date (green), outdated with the changelog lines from that JSON (red), or a
   - Texts: `CoconutCollectedNotify` now shows the ml taken (`%d`), new `CoconutLeftInTreeNotify`,
     and `CoconutPotRequiredNotify` reworded.
   - One collect at a time per player and per tree.
+- **Coconut trees fill slower, sized for a ~100-player server.** `FillIntervalMinutes` 1 → 2 and
+  `FillPercentPerInterval` 10 → 5, so a pot fills in 40 min instead of 10. `RegrowCooldownSeconds` is now its
+  own number, 300 (it was `TreeGrowingTime`, 60, which is also the tree search cooldown). A drained tree takes
+  about 45 min to be full again. All 21 trees together now give about 28,000 ml an hour (was about 114,500).
+- **A filled pot now reads "Coconut Flower Sap (600ml)"** instead of "Coconut Water (600ml)". The label and
+  description come from the new `Config.Text.CoconutPotLabel` / `CoconutPotDescription` (they were hard-coded in
+  `mash.lua`). Pots already in satchels keep the old label until they are next topped up or drawn from.
+  Every other text players see now says "coconut flower sap" too: the tree prompt, fill HUD, collect / spill /
+  pot notes, collect minigame title ("Pour Off The Sap"), the still's "bring Xml" note, the recipe book line, the
+  mash slip and the Raa instructions (`config/text.lua`, `config/recipes.lua`). Event and function names
+  (`collectCoconutWater`, `Config.Text.Receipt.CoconutWater`, ...) are unchanged.
+- **Pol Raa: one full pot of sap is one batch, put in the barrel.** No water any more. The `filled_pot` is
+  the recipe's batch ingredient, so the barrel stash takes whole pots (1 to 3). A pot only counts when it holds
+  `Config.CoconutBucketConf.PotCapacityMl` (1000ml). A part-filled pot is refused with `MashPotNotFull`
+  ("top it up at a tree"). Each pot used comes back as an `empty_pot` to whoever mixes, and the mix waits until
+  they have room (`MashNoRoomForReturns`). Sap freshness comes from the pot's `picked` stamp. Each pot counts as
+  2 sugar, so a pot alone makes Regular and +1 Brown Sugar per pot makes Strong. `coconutMl` / `coconutSugar`
+  are gone from the recipe (the satchel route still works for any recipe that sets them).
+  - New ingredient fields, usable on any recipe: `fullMl` (the stack only counts at this ml or more) and
+    `returnItem` (handed back per item once mixed).
+  - Recipe book: the batch line shows "a full pot (1000ml)", and the sugar line counts the pot's own sugar.
+  - A batch poured out or seized while pots are still in the stash loses those pots.
+  - Pol Raa now also needs 2 Water and at least 1 Brown Sugar per pot (`amount`). Brown Sugar counts as 1 sugar,
+    so per pot 1 makes Light, 2 Regular and 4 Strong. The instructions text says this.
+- **"Palm Sap" removed from `Config.Text.TendWashIngredients`.** The tend minigame's fallback tray is now
+  Jaggery, Yeast, Coconut Flower Sap, Treacle (still 4, the most the tray shows).
 
 ### Removed
 - Unused items in `config/items.lua`: `RecipeArrack`, `SpiritPerfect`, `SpiritGood`, `SpiritNormal`,
@@ -46,6 +72,8 @@ up to date (green), outdated with the changelog lines from that JSON (red), or a
 - Hidden barrel and crate gauges no longer keep a warning animation running behind them (FPS).
 
 ### Added
+- **`Items/items.sql`**: every item the script uses (27), as one `INSERT IGNORE INTO items` for vorp_inventory.
+  Safe to run again; `id` is left to the database. Item pictures are in `Items/Images/`.
 - **Fittings slip beside the still's book.** Opening the book at your still (owner and crew) now shows a slip
   on the right with the Copper coil, Iron hoops and Pressure gauge: what each one does, whether it is fitted,
   and a **Fit** button. Fit takes the part from your satchel. Using the part from the satchel at the still still works.

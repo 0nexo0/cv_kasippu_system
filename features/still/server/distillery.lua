@@ -2522,6 +2522,13 @@ AddEventHandler('gsc_kassippu:server:startMixing', function(uid, recipeKey, clim
             return GSC.Notify.Send(_source, mash.problems[1], 5000)
         end
 
+        ---o[ Room for the containers that come back (empty pots), before anything is used ]o---
+        for item, count in pairs(mash.returns or {}) do
+            if not exports.vorp_inventory:canCarryItem(_source, item, count) then
+                return GSC.Notify.Send(_source, string.format(Config.Text.MashNoRoomForReturns, count), 5000)
+            end
+        end
+
         if mash.coconutMl > 0 then
             GSC.Mash.UseCoconut(_source, stacks, mash.coconutMl)
         end
@@ -2530,6 +2537,10 @@ AddEventHandler('gsc_kassippu:server:startMixing', function(uid, recipeKey, clim
             SaveBarrelToDB(uid)
             Shared.Debug("^2[DATABASE]^7 Cleared items for inventory: " .. invId)
         end)
+
+        for item, count in pairs(mash.returns or {}) do
+            exports.vorp_inventory:addItem(_source, item, count)
+        end
 
         ---o[ Update Barrel Data ]o---
         BarrelLoaded[uid] = recipeKey

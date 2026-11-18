@@ -1,5 +1,5 @@
 ---o[ Recipe Book ]o---
-Config.DefaultRecipe = "kasippu" -- recipe the book opens on
+Config.DefaultRecipe = "pol_raa" -- recipe the book opens on
 
 Config.RecipeBook = {
     ItemImages = "nui://vorp_inventory/html/img/items/%s.png", -- item pictures in the book (%s = item name)
@@ -8,9 +8,44 @@ Config.RecipeBook = {
 
 ---o[ Recipes ]o---
 Config.Recipes = {
-    ---o[ Kassippu ]o---
+
+    ---o[ Raa ]o---
+    ["pol_raa"] = {
+        label        = "Pol Raa", 
+        title        = "රා Recipe",
+        titleImage   = "assets/img/new/Raa_text.png",
+        displayImage = "assets/img/new/Raa.png",
+
+        ingredients = {
+            { item = Config.Items.FilledPot, label = "Coconut Flower Sap", batch = true, -- one FULL pot = one batch
+                fullMl = Config.CoconutBucketConf.PotCapacityMl, -- a pot with less than this is refused
+                returnItem = Config.Items.EmptyPot,              -- each pot comes back empty to whoever mixes
+                perishable = true },
+            { item = "water", label = "Water", amount = 2 },
+            { item = "brown_sugar", label = "Brown Sugar", amount = 1, sugar = 1 },
+        },
+        minSugar     = 1,
+
+        strengths = {
+            { key = "STRONG",  label = "Strong",  sugar = 4, proof = 100 },
+            { key = "REGULAR", label = "Regular", sugar = 2, proof = 80 },
+            { key = "LIGHT",   label = "Light",   sugar = 1, proof = 60 },
+        },
+
+        instructions = "One full pot of coconut flower sap (1000ml) is one batch, up to 3 - as fresh as you can. "
+            .. "Every pot needs 2 Water and at least 1 Brown Sugar. "
+            .. "Brown Sugar per pot sets the strength: 1 Light, 2 Regular, 4 Strong.",
+
+        rewards = {
+            ["PERFECT"] = { item = Config.Items.RaaBottle, count = 8, quality = "PERFECT" },
+            ["GOOD"]    = { item = Config.Items.RaaBottle, count = 5, quality = "GOOD" },
+            ["NORMAL"]  = { item = Config.Items.RaaBottle, count = 3, quality = "NORMAL" },
+        },
+    },
+
+     ---o[ Kassippu ]o---
     ["kasippu"] = {
-        label        = "Kassippu",
+        label        = "Kasippu",
         title        = "කසිප්පු Recipe",
         titleImage   = "assets/img/new/kasippu_text.png",
         displayImage = "assets/img/new/kasiya.png",
@@ -19,9 +54,8 @@ Config.Recipes = {
 
         ingredients = {
             { item = "water",       label = "Water",       batch = true },   -- 1 per batch: the batch size
-            { item = "yeast",       label = "Yeast",       amount = 1 },     -- every batch needs 1
+            { item = "yeast",       label = "Yeast",       amount = 2 },     -- every batch needs 1
             { item = "brown_sugar", label = "Brown Sugar", sugar = 2 },
-            { item = "sugarcane",   label = "Sugarcane",   sugar = 1 },
             { item = "banana",      label = "Banana",      flavour = 1, perishable = true },
             { item = "apple",       label = "Apple",       flavour = 1 },
             { item = "orange",      label = "Orange",      flavour = 1 },
@@ -55,37 +89,6 @@ Config.Recipes = {
                 },
             },
             ["NORMAL"]  = { item = Config.Items.KasippuBottle, count = 3, quality = "NORMAL" }, -- no agedItems: ages only as a relabelled bottle
-        },
-    },
-
-    ---o[ Raa ]o---
-    ["raaa"] = {
-        label        = "Raa",   -- shown to players; the key stays ["raaa"] (saved barrels and bottles use it)
-        title        = "රා Recipe",
-        titleImage   = "assets/img/new/Raa_text.png",
-        displayImage = "assets/img/new/Raa.png",
-
-        ingredients = { -- no yeast: coconut water ferments it
-            { item = "water",       label = "Water",       batch = true }, -- the ONLY batch item: every batch = true item counts as a batch
-            { item = "brown_sugar", label = "Brown Sugar", sugar = 2 },
-        },
-        minSugar     = 1,
-        coconutMl    = 500, -- ml of coconut water per batch, carried in the satchel (half a full pot)
-        coconutSugar = 2,   -- sugar the coconut water counts as
-
-        strengths = {
-            { key = "STRONG",  label = "Strong",  sugar = 4, proof = 100 },
-            { key = "REGULAR", label = "Regular", sugar = 2, proof = 80 },
-            { key = "LIGHT",   label = "Light",   sugar = 1, proof = 60 },
-        },
-
-        instructions = "Coconut water does the work - bring 500ml for every batch, as fresh as you can. "
-            .. "Add 1 Brown Sugar per batch for a Strong Raa.",
-
-        rewards = {
-            ["PERFECT"] = { item = Config.Items.RaaBottle, count = 8, quality = "PERFECT" },
-            ["GOOD"]    = { item = Config.Items.RaaBottle, count = 5, quality = "GOOD" },
-            ["NORMAL"]  = { item = Config.Items.RaaBottle, count = 3, quality = "NORMAL" },
         },
     },
 

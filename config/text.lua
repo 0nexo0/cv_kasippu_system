@@ -59,7 +59,9 @@ Config.Text = {
     MashTooMuchWater    = "Too much %s - %d at most (one per batch).",       -- the batch ingredient, max
     MashNeedMore        = "Add %d more %s - a %s batch needs %d.",           -- missing, ingredient, batch name, needed
     MashNeedSugar       = "Add sugar - it needs at least %d sugar per batch (the book shows what each counts as).",
-    MashNeedCoconut     = "Bring %dml of coconut water in your satchel - you have %dml.",
+    MashNeedCoconut     = "Bring %dml of coconut flower sap in your satchel - you have %dml.",
+    MashPotNotFull      = "Take out the part-filled %s - only a full pot (%dml) makes a batch. Top it up at a tree.", -- label, ml
+    MashNoRoomForReturns = "Make room in your satchel for %d empty pot(s) first.",                                -- count
     MashTooMuchFruit    = "Too much fruit - it will clog the barrel.",
     MashIngredientBonus = "Your ingredients and stirring: %+d to the score.",
     MashSpiritTooRough  = "Take out the %s - only Good or Perfect spirit is worth running again.", -- the bottle's name
@@ -90,7 +92,7 @@ Config.Text = {
     TendWashBusy    = "Someone is already tending this wash.",
     TendWashNotYet  = "The wash hasn't started working yet. Give it a moment.",
     TendWashReverse = "Now the other way!",                     -- called out halfway, when the stir flips
-    TendWashIngredients = { "Jaggery", "Yeast", "Palm Sap", "Coconut Water", "Treacle" }, -- what floats up
+    TendWashIngredients = { "Jaggery", "Yeast", "Coconut Flower Sap", "Treacle" }, -- what floats up
     TendWashLabels  = { mixed = "Mixed", froth = "Froth", speed = "Stir" }, -- the bars, and the spoon's speed gauge
     TendWashCall     = "Add the %s",                            -- spoon game: the wash calls for an ingredient
     TendWashTooFast  = "Too fast - it's frothing!",
@@ -410,7 +412,7 @@ Config.Text = {
         Strength     = "Strength",
         Fruit        = "Fruit",
         Freshness    = "Freshness",
-        Coconut      = "Coconut water",
+        Coconut      = "Coconut flower sap",
         Outcome      = "You'll get",
         OutcomeText  = "%d-%d bottles of %s",  -- fewest, most, product
         OutcomeNote  = "How many depends on how well you hold the heat.",
@@ -431,12 +433,13 @@ Config.Text = {
         PerBatch     = "%d a batch",
         MlPerBatch   = "%dml a batch",
         UpToPerBatch = "up to %d a batch",
-        CoconutWater = "Coconut Water",
+        CoconutWater = "Coconut Flower Sap",
         InSatchel    = "carried in your satchel",
+        FullPot      = "a full pot (%dml)",  -- a batch item that must be full (ml)
         Sugar        = "Sugar",
         SugarWorth   = "%s %d",        -- item, the sugar it counts as
         SugarFor     = "%d %s",        -- sugar a batch, strength: "4 Strong"
-        SugarExtra   = "+%d %s",       -- on top of the coconut water's own sugar
+        SugarExtra   = "+%d %s",       -- on top of the coconut flower sap's own sugar
         Fruit        = "Fruit",
         FruitNote    = "optional - fresh is best",
         Spirit       = "Bottles of %s", -- the first-run recipe
@@ -619,7 +622,7 @@ Config.Text = {
     },
     ClimbGripTitle      = "Grip %d/%d",
     TreeSearchGameTitle = "Search The Crown",
-    CoconutGameTitle    = "Pour Off The Water",
+    CoconutGameTitle    = "Pour Off The Sap",
 
     ---o[ Climbing trees ]o---
     ClimbRopeRequiredNotify     = "You need a climbing rope to climb this tree!",
@@ -641,14 +644,16 @@ Config.Text = {
     TreeLootCardTitle                = "FOUND",
     TreeLootCardEmpty                = "Nothing but leaves",
 
-    ---o[ Coconut water ]o---
+    ---o[ Coconut flower sap ]o---
     CoconutBucketEmptyNotify          = "The bucket isn't full enough yet. Come back later.",
-    CoconutPotRequiredNotify          = "You need an empty pot, or one with room left, to collect coconut water!",
-    CoconutCollectedNotify            = "You collected %dml of coconut water into your pots.", -- ml
+    CoconutPotRequiredNotify          = "You need an empty pot, or one with room left, to collect coconut flower sap!",
+    CoconutCollectedNotify            = "You collected %dml of coconut flower sap into your pots.", -- ml
     CoconutLeftInTreeNotify           = "Your pots are full - %dml is still up in the tree.",  -- ml
-    CoconutCollectMinigameStartNotify = "Carefully collect the coconut water...",
-    CoconutCollectFailNotify          = "You spilled the coconut water!",
-    CoconutFillHudLabel               = "Coconut Water",
+    CoconutPotLabel                   = "Coconut Flower Sap (%dml)",                       -- filled_pot label in the satchel (ml)
+    CoconutPotDescription             = "A pot filled with %dml of fresh coconut flower sap.", -- filled_pot description (ml)
+    CoconutCollectMinigameStartNotify = "Carefully collect the coconut flower sap...",
+    CoconutCollectFailNotify          = "You spilled the coconut flower sap!",
+    CoconutFillHudLabel               = "Coconut Flower Sap",
     CoconutFillHudReady               = "FULL",
     CoconutFillHudWaiting             = "checking bucket...",
     CoconutFillHudRegrowing           = "Regrowing",
@@ -795,6 +800,6 @@ Config.PromptsTxt = {
     ---o[ Palm trees ]o---
     PlamTreeClimbPrompt      = "Climb Tree",
     TreeSearchPrompt         = "Search",
-    TreeCollectPrompt        = "Collect Coconut Water",
+    TreeCollectPrompt        = "Collect Coconut Flower Sap",
     TreeClimbDownPrompt      = "Climb Down",
 }

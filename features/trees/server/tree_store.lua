@@ -218,7 +218,7 @@ AddEventHandler('playerDropped', function()
     Climbs[source] = nil
 end)
 
----oo[ Collect Coconut Water Into The Player's Pots ]oo---
+---oo[ Collect Coconut Flower Sap Into The Player's Pots ]oo---
 local Collecting = {}     -- [src] = true while their collect runs
 local CollectingTree = {} -- [uid] = true while somebody is collecting from it
 

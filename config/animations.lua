@@ -65,7 +65,7 @@ Config.AnimConf = {
     TreeItemSearchAnimName  = "idle_d",
     TreeItemsSearchAnimFlag = 31,
 
-    CoconutCollectAnimDict  = "mech_inspection@mini_map@satchel", -- draining coconut water into the pot
+    CoconutCollectAnimDict  = "mech_inspection@mini_map@satchel", -- draining coconut flower sap into the pot
     CoconutCollectAnimName  = "exit",
     CoconutCollectAnimFlag  = 31,
 

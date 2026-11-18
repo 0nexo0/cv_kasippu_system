@@ -45,7 +45,7 @@ function Mash.PickedMetadata(itemName)
     }
 end
 
----oo[ Coconut Water In The Satchel ]oo---
+---oo[ Coconut Flower Sap In The Satchel ]oo---
 
 ---o[ The metadata a filled pot carries for `ml` (keeps any other keys of `base`) ]o---
 function Mash.PotMetadata(ml, picked, base)
@@ -53,8 +53,8 @@ function Mash.PotMetadata(ml, picked, base)
     for k, v in pairs(base or {}) do metadata[k] = v end
     metadata.ml = ml
     metadata.picked = picked
-    metadata.label = string.format("Coconut Water (%dml)", ml)
-    metadata.description = string.format("A pot filled with %dml of fresh coconut water.", ml)
+    metadata.label = string.format(Config.Text.CoconutPotLabel or "Coconut Flower Sap (%dml)", ml)
+    metadata.description = string.format(Config.Text.CoconutPotDescription or "A pot filled with %dml of fresh coconut flower sap.", ml)
     return metadata
 end
 
@@ -281,6 +281,7 @@ function Mash.Evaluate(recipeKey, stored, coconutStacks, now)
     local staleSum, staleWeight = 0.0, 0
     local anything, refused = false, {}
     local spiritBonusSum, spiritRankSum = 0.0, 0
+    local returns = {} -- [item] = containers handed back once mixed (empty pots)
 
     for _, entry in pairs(stored or {}) do
         local name = tostring(entry.name or "")
@@ -292,8 +293,18 @@ function Mash.Evaluate(recipeKey, stored, coconutStacks, now)
             local spirit = (not ing and takesSpirit) and SpiritOf(entry) or nil
             local label = (ing and ing.label) or (entry.metadata and entry.metadata.label) or entry.label or name
 
-            if ing then
+            ---o[ A container that only counts when full (a pot of sap) ]o---
+            local fullMl = ing and tonumber(ing.fullMl)
+            local shortMl = fullMl and (tonumber((entry.metadata or {}).ml) or 0) < fullMl
+
+            if shortMl then
+                if not refused[name .. ":short"] then
+                    refused[name .. ":short"] = true
+                    problems[#problems + 1] = string.format(T.MashPotNotFull, label, fullMl)
+                end
+            elseif ing then
                 ---o[ One of the recipe's ingredients ]o---
+                if ing.returnItem then returns[ing.returnItem] = (returns[ing.returnItem] or 0) + count end
                 counted[name] = (counted[name] or 0) + count
                 if ing.batch then totals.batch = totals.batch + count end
                 totals.sugar = totals.sugar + count * (tonumber(ing.sugar) or 0)
@@ -354,6 +365,7 @@ function Mash.Evaluate(recipeKey, stored, coconutStacks, now)
 
     local batch = math.max(1, math.min(maxBatch, batches))
     result.batch = batch
+    result.returns = returns
 
     ---o[ What every batch needs ]o---
     for _, ing in ipairs(recipe.ingredients or {}) do
@@ -373,7 +385,7 @@ function Mash.Evaluate(recipeKey, stored, coconutStacks, now)
         end
     end
 
-    ---o[ Coconut water from the satchel ]o---
+    ---o[ Coconut flower sap from the satchel ]o---
     local coconutMl = (tonumber(recipe.coconutMl) or 0) * batch
     result.coconutMl = coconutMl
 

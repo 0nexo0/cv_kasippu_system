@@ -2,8 +2,8 @@
 Config.Items = {
     ---o[ Tools and containers ]o---
     ClimbRope    = "climb_rope",           -- needed to climb a coconut tree
-    EmptyPot     = "empty_pot",            -- catches coconut water at the top of a tree
-    FilledPot    = "filled_pot",           -- a pot of coconut water (ml in metadata); the still drinks it, drained = empty pot
+    EmptyPot     = "empty_pot",            -- catches coconut flower sap at the top of a tree
+    FilledPot    = "filled_pot",           -- a pot of coconut flower sap (ml in metadata; label: Config.Text.CoconutPotLabel); the still drinks it, drained = empty pot
     BarrelKit    = "kassippu_barrel_kit",  -- sets down a still
     RepairKit    = "barrel_repair_kit",    -- repairs a worn still; several uses (Config.BarrelCondition.RepairKitUses)
     AgingCrate   = "kassippu_aging_crate", -- sets down an aging crate
@@ -21,7 +21,7 @@ Config.Items = {
     ---o[ Barrel upgrades ]o---
     CopperCoil    = "copper_coil",         -- a better condenser: higher score, Perfect from a more worn barrel
     IronHoops     = "iron_hoops",          -- the barrel wears slower
-    PressureGauge = "pressure_gauge",      -- venting costs less heat, and the warning comes sooner
+    PressureGauge = "gauge",      -- venting costs less heat, and the warning comes sooner
 
     ---o[ Recipe cards ]o---
     RecipeKasippu = "recipe_kasippu",      -- unlocks Kassippu in the recipe book
@@ -30,8 +30,7 @@ Config.Items = {
     SpentMash    = "spent_mash",           -- horse feed, or sold cheaply
 
     ---o[ Used outside the recipes ]o---
-    Water        = "water",                -- found searching the coconut trees
-    Banana       = "coconut",              -- found searching the coconut trees
+    coconut       = "coconut",              -- found searching the coconut trees
 
     ---o[ What a still bottles ]o---
     KasippuBottle = "local_kasippu",       -- Kassippu, any grade and strength (config/recipes.lua rewards)

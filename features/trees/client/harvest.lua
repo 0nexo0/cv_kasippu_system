@@ -268,7 +268,7 @@ AddEventHandler('gsc_kassippu:client:treeReward', function(item, amount, label, 
     })
 end)
 
----oo[ Collect Coconut Water Minigame ]oo---
+---oo[ Collect Coconut Flower Sap Minigame ]oo---
 function Harvest.CollectCoconutWater(ped, treeEntity, treeData)
     local _, cooldown = GetBucketReading(treeData.uid)
     if cooldown and cooldown > 0 then

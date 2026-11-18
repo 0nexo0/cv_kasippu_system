@@ -1526,7 +1526,8 @@ local function BuildReceipt(recipe)
             local label = ing.label or ing.item
 
             if ing.batch then
-                Add({ ing.item }, label, nil, string.format(txt.PerBatch, 1))
+                Add({ ing.item }, label, ing.fullMl and string.format(txt.FullPot, ing.fullMl) or nil,
+                    string.format(txt.PerBatch, 1))
             elseif amount > 0 then
                 Add({ ing.item }, label, CountsAs(ing), string.format(txt.PerBatch, amount))
                 if (tonumber(ing.sugar) or 0) > 0 then requiredSugar = true end
@@ -1566,6 +1567,9 @@ local function BuildReceipt(recipe)
         end
 
         local own = coconutMl > 0 and (tonumber(recipe.coconutSugar) or 0) or 0
+        for _, ing in ipairs(recipe.ingredients or {}) do -- the batch item's own sugar (a pot of sap)
+            if type(ing) == 'table' and ing.batch then own = own + (tonumber(ing.sugar) or 0) end
+        end
         local tiers = {}
         local strengths = recipe.strengths or {}
         for i = #strengths, 1, -1 do -- weakest first

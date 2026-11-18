@@ -352,7 +352,7 @@ local function ShowTopPrompts(visible)
         local keys, txt = Config.InteractKeys, Config.PromptsTxt
         local holdMs = PromptHoldMs()
         climbDownPrompt = CreateTopPrompt(keys.TreeClimbKey, txt.TreeClimbDownPrompt or "Climb Down", holdMs)
-        collectPrompt = CreateTopPrompt(keys.TreeCoconutCollectKey, txt.TreeCollectPrompt or "Collect Coconut Water", holdMs)
+        collectPrompt = CreateTopPrompt(keys.TreeCoconutCollectKey, txt.TreeCollectPrompt or "Collect Coconut Flower Sap", holdMs)
         searchPrompt = CreateTopPrompt(keys.TreeSearchKey, txt.TreeSearchPrompt or "Search", holdMs)
         topPrompts = { searchPrompt, collectPrompt, climbDownPrompt }
     else
