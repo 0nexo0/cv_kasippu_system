@@ -9,7 +9,6 @@ local ledgerOpen = false
 
 local PromptGroup = CreateVarString(10, 'LITERAL_STRING', "Buyer")
 local TalkPrompt = nil
-local groupLabels = {}
 
 local function Conf()
     return Config.Market or {}
@@ -145,11 +144,7 @@ function Buyers.RadialActions()
 end
 
 local function AtBuyer(buyer, talkAt)
-    local label = groupLabels[buyer.id]
-    if not label then
-        label = CreateVarString(10, 'LITERAL_STRING', buyer.name or "Buyer")
-        groupLabels[buyer.id] = label
-    end
+    local label = buyer.name or "Buyer" -- plain text; the VarString is built per frame below
 
     local checkAt = 0
     while not ledgerOpen and not GSC.Minigame.IsActive() do
@@ -161,7 +156,7 @@ local function AtBuyer(buyer, talkAt)
         if (GSC.Radial ~= nil and GSC.Radial.Owns("buyer")) then
             GSC.Radial.Hint("buyer")
         else
-            UiPromptSetActiveGroupThisFrame(PromptGroup, label)
+            UiPromptSetActiveGroupThisFrame(PromptGroup, CreateVarString(10, 'LITERAL_STRING', label))
         end
         if not (GSC.Radial ~= nil and GSC.Radial.Owns("buyer")) and TalkJustCompleted() then
             TriggerServerEvent('gsc_kassippu:server:buyerOpen', buyer.id)

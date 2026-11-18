@@ -321,7 +321,7 @@ CreateThread(function()
     PromptSetGroup(PickupPrompt, group, 0)
     PromptRegisterEnd(PickupPrompt)
 
-    groupLabel = VarString(10, "LITERAL_STRING", T.Prompts or "Still Supplies")
+    groupLabel = T.Prompts or "Still Supplies" -- plain text; VarString is built per frame
 end)
 
 local fillLatched, pickupLatched = false, false
@@ -368,7 +368,7 @@ CreateThread(function()
             end
             PromptSetVisible(FillPrompt, true)
             PromptSetVisible(PickupPrompt, true)
-            if groupLabel then UiPromptSetActiveGroupThisFrame(group, groupLabel, 0, 0, 0, 0) end
+            if groupLabel then UiPromptSetActiveGroupThisFrame(group, VarString(10, "LITERAL_STRING", groupLabel), 0, 0, 0, 0) end
 
             local filled = UiPromptHasHoldModeCompleted(FillPrompt)
             if filled and not fillLatched then

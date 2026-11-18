@@ -33,6 +33,6 @@ Config.TreeAdmin = {
     Ace               = "gsc_kasippu.treeadmin", -- server.cfg: add_ace group.admin gsc_kasippu.treeadmin allow
     Groups            = { "admin" },             -- VORP account or character groups
     MaxDeleteDistance = 10.0,                    -- metres from the tree; /removetree looks within 5
-    AddCommand        = "addtree",               -- /addtree [heading]: saves a tree where you stand, straight to gsc_climb_trees
+    AddCommand        = "addtree",               -- /addtree [heading]: saves a tree where you stand, straight to gsc_kasippu_trees
     MinTreeSpacing    = 2.0,                     -- metres: /addtree refuses a spot this close to another tree
 }

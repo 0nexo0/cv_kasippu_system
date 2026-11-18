@@ -69,6 +69,22 @@ up to date (green), outdated with the changelog lines from that JSON (red), or a
   any `coconut_water` players still carry no longer counts at the still.
 
 ### Fixed
+- **Database tables file is back: `database/cv_kasippu_tables.sql`.** The resource ran `database/schema.sql` on
+  start, but that file was missing from the build, so a new server got no tables. The new file creates only the
+  5 tables the code uses (`gsc_kasippu_trees`, `gsc_kassippu_barrels`, `gsc_kassippu_crates`, `gsc_kassippu_trust`,
+  `gsc_kassippu_seen`), with only the columns it reads or writes. `gsc_kasippu_trees` now has `fill_percent` /
+  `last_update` in the `CREATE`. Unused `owner_name`, `created_at`, `last_used` and the `id` key on barrels are
+  gone from new installs (existing tables are not changed). The MariaDB `ADD COLUMN IF NOT EXISTS` upgrade lines are
+  kept for older databases. The tree loader now waits for this file to run first, so trees load on the very first
+  start of a fresh database.
+- **Tree table renamed `gsc_climb_trees` → `gsc_kasippu_trees`.** Every query uses the new name. On start, before
+  the tables file runs, an existing `gsc_climb_trees` is renamed in place (`RENAME TABLE`), so trees and their pot
+  fill carry over. If both tables already exist, the new one is used and a yellow note says to drop the old one by
+  hand.
+- **Garbled text under prompt groups (e.g. "er Sap" under the coconut tree prompts).** Group labels were built
+  once with `VarString` and reused every frame, but a VarString points into a scratch buffer the game reuses,
+  so other text overwrote it. Labels now keep the plain text and build the VarString on the frame it is shown
+  (trees, buyers, crew invite, still push game, still stations, barrels, crates).
 - Hidden barrel and crate gauges no longer keep a warning animation running behind them (FPS).
 - **Pol Raa sold at the $4 fallback price.** `Config.Market.Base` still used the old key `raaa`; it is now
   `pol_raa`, so Raa sells at its $5 base again.

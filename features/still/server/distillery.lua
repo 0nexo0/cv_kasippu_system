@@ -398,11 +398,51 @@ end)
 
 ---oo[ Helper Functions ]oo---
 
+---o[ Tables that were renamed: old name -> new name ]o---
+local RenamedTables = {
+    { from = 'gsc_climb_trees', to = 'gsc_kasippu_trees' },
+}
+
+local function AwaitQuery(sql, params)
+    local p = promise.new()
+    exports.oxmysql:execute(sql, params or {}, function(result, err)
+        if err then print("^1[Database]^7 " .. tostring(err)) end
+        p:resolve(not err and (result or {}) or nil)
+    end, GetCurrentResourceName(), true)
+    return Citizen.Await(p)
+end
+
+---o[ Move an old table to its new name once, before the CREATEs would make an empty one ]o---
+local function RenameOldTables()
+    for _, t in ipairs(RenamedTables) do
+        local rows = AwaitQuery([[
+            SELECT TABLE_NAME AS name FROM information_schema.TABLES
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN (?, ?)
+        ]], { t.from, t.to })
+
+        if rows then
+            local have = {}
+            for _, row in ipairs(rows) do have[row.name] = true end
+
+            if have[t.from] and not have[t.to] then
+                if AwaitQuery(string.format("RENAME TABLE `%s` TO `%s`", t.from, t.to)) then
+                    print(string.format("^2[Database]^7 Renamed table %s to %s", t.from, t.to))
+                end
+            elseif have[t.from] and have[t.to] then
+                print(string.format("^3[Database]^7 Both %s and %s exist - using %s. Drop %s by hand once checked.",
+                    t.from, t.to, t.to, t.from))
+            end
+        end
+    end
+end
+
 ---o[ Persistence Models Loads & Auto-Seed from SQL File ]o---
 CreateThread(function()
     while GetResourceState('oxmysql') ~= 'started' do Wait(100) end
 
-    local sqlFile = LoadResourceFile(GetCurrentResourceName(), "database/schema.sql")
+    RenameOldTables()
+
+    local sqlFile = LoadResourceFile(GetCurrentResourceName(), "database/cv_kasippu_tables.sql")
 
     if sqlFile then
         local stripped = sqlFile:gsub("%-%-[^\n]*", "")
@@ -421,14 +461,15 @@ CreateThread(function()
         end
 
         if ok then
-            Shared.Debug("^2[Database]^7 Auto-seeded from database/schema.sql")
+            Shared.Debug("^2[Database]^7 Auto-seeded from database/cv_kasippu_tables.sql")
         else
-            print("^1[Error]^7 One or more statements in database/schema.sql failed, see above")
+            print("^1[Error]^7 One or more statements in database/cv_kasippu_tables.sql failed, see above")
         end
     else
-        print("^1[Error]^7 Could not find database/schema.sql in the resource folder!")
+        print("^1[Error]^7 Could not find database/cv_kasippu_tables.sql in the resource folder!")
     end
 
+    Distillery.TablesReady = true -- tree_store.lua waits on this before touching gsc_kasippu_trees
     Distillery.LoadBarrelsFromDB()
     GSC.Crates.LoadCratesFromDB()
 end)

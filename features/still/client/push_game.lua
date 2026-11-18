@@ -57,7 +57,7 @@ end
 
 CreateThread(function()
     local keys, T = Config.InteractKeys, Text()
-    groupLabel = VarString(10, "LITERAL_STRING", T.Group or "Hold The Heat")
+    groupLabel = T.Group or "Hold The Heat" -- plain text; VarString is built per frame
     StokePrompt = MakePrompt(keys.WoodFuelAddingKey, T.Stoke)
     CoolPrompt = MakePrompt(keys.WaterPouringKey, T.Cool)
     VentPrompt = MakePrompt(keys.BarrelVentKey, T.Vent)
@@ -249,7 +249,7 @@ local function PanelTick()
     ---o[ Dismissed ]o---
     running = true
     ShowPrompts(false, false, false, false, true)
-    if groupLabel then UiPromptSetActiveGroupThisFrame(group, groupLabel, 0, 0, 0, 0) end
+    if groupLabel then UiPromptSetActiveGroupThisFrame(group, VarString(10, "LITERAL_STRING", groupLabel), 0, 0, 0, 0) end
     if Pressed(Config.InteractKeys.WoodFuelAddingKey) then PushGame.Open(uid) end
     return 0
 end
@@ -278,7 +278,7 @@ local function PromptTick()
     end
 
     ShowPrompts(canFuel, canCool, canVent, canFix, false)
-    if groupLabel then UiPromptSetActiveGroupThisFrame(group, groupLabel, 0, 0, 0, 0) end
+    if groupLabel then UiPromptSetActiveGroupThisFrame(group, VarString(10, "LITERAL_STRING", groupLabel), 0, 0, 0, 0) end
 
     local keys = Config.InteractKeys
     if canFuel and Pressed(keys.WoodFuelAddingKey) then Stoke(uid) end

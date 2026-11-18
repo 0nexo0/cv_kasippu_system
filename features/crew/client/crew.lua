@@ -68,11 +68,10 @@ local function RunInvite(current)
 
         if left ~= shownLeft then
             shownLeft = left
-            label = VarString(10, "LITERAL_STRING",
-                string.format("%s - %s (%ds)", Config.PromptsTxt.CrewInviteTitle, current.from, left))
+            label = string.format("%s - %s (%ds)", Config.PromptsTxt.CrewInviteTitle, current.from, left)
         end
 
-        UiPromptSetActiveGroupThisFrame(PromptGroup, label)
+        UiPromptSetActiveGroupThisFrame(PromptGroup, VarString(10, "LITERAL_STRING", label))
 
         local accept = UiPromptHasHoldModeCompleted(AcceptPrompt)
         local decline = UiPromptHasHoldModeCompleted(DeclinePrompt)

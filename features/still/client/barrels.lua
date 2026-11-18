@@ -743,13 +743,12 @@ local function StageInfo(stage)
 end
 
 local function GetGroupLabel(stage)
-    local label = groupLabelCache[stage]
-    if not label then
-        label = VarString(10, 'LITERAL_STRING',
-            Config.KasiyaBarrelKitConf.KasiyaBarrelPromptTitle .. " [" .. StageInfo(stage).label .. "]")
-        groupLabelCache[stage] = label
+    local text = groupLabelCache[stage] -- caches the text only: a VarString can't outlive its frame
+    if not text then
+        text = Config.KasiyaBarrelKitConf.KasiyaBarrelPromptTitle .. " [" .. StageInfo(stage).label .. "]"
+        groupLabelCache[stage] = text
     end
-    return label
+    return VarString(10, 'LITERAL_STRING', text)
 end
 
 ---oo[ The At-The-Barrel Gauge ]oo---

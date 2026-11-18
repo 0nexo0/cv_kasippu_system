@@ -568,20 +568,20 @@ end
 local groupLabels = {}
 local lastLabelCount, lastLabelCapacity, lastLabelLocked, lastLabel = nil, nil, nil, nil -- skips the key string per frame
 local function GroupLabel(count, capacity, locked)
+    -- caches the text only: a VarString points into a reused buffer and can't outlive its frame
     if count == lastLabelCount and capacity == lastLabelCapacity and locked == lastLabelLocked then
-        return lastLabel
+        return VarString(10, 'LITERAL_STRING', lastLabel)
     end
 
     local key = count .. "/" .. capacity .. (locked and "|L" or "")
     if not groupLabels[key] then
-        groupLabels[key] = VarString(10, 'LITERAL_STRING',
-            string.format("%s [%s]%s", Config.PromptsTxt.CratePromptTitle, count .. "/" .. capacity,
-                locked and Config.PromptsTxt.CrateLockedTag or ""))
+        groupLabels[key] = string.format("%s [%s]%s", Config.PromptsTxt.CratePromptTitle, count .. "/" .. capacity,
+            locked and Config.PromptsTxt.CrateLockedTag or "")
     end
 
     lastLabelCount, lastLabelCapacity, lastLabelLocked = count, capacity, locked
     lastLabel = groupLabels[key]
-    return lastLabel
+    return VarString(10, 'LITERAL_STRING', lastLabel)
 end
 
 local function ControlPressed(key)

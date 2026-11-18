@@ -18,32 +18,33 @@ local function Exec(sql, params)
     return Citizen.Await(p)
 end
 
----oo[ Ensure fill_percent / last_update Columns Exist On gsc_climb_trees ]oo---
+---oo[ Ensure fill_percent / last_update Columns Exist On gsc_kasippu_trees ]oo---
 CreateThread(function()
     while GetResourceState('oxmysql') ~= 'started' do Wait(100) end
+    while not GSC.module('Distillery').TablesReady do Wait(100) end -- the SQL file creates the table
 
     local columns = Exec([[
         SELECT COLUMN_NAME AS name FROM information_schema.COLUMNS
-        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gsc_climb_trees'
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gsc_kasippu_trees'
     ]])
     if not columns then return end
     if #columns == 0 then
-        return print("^1[Error]^7 Table gsc_climb_trees not found - run database/schema.sql. No climbable trees loaded.")
+        return print("^1[Error]^7 Table gsc_kasippu_trees not found - run database/cv_kasippu_tables.sql. No climbable trees loaded.")
     end
 
     local have = {}
     for _, col in ipairs(columns) do have[tostring(col.name):lower()] = true end
 
     if not have.fill_percent then
-        Exec("ALTER TABLE `gsc_climb_trees` ADD COLUMN `fill_percent` DECIMAL(5,2) NOT NULL DEFAULT 0.00")
+        Exec("ALTER TABLE `gsc_kasippu_trees` ADD COLUMN `fill_percent` DECIMAL(5,2) NOT NULL DEFAULT 0.00")
     end
     if not have.last_update then
-        Exec("ALTER TABLE `gsc_climb_trees` ADD COLUMN `last_update` INT(11) NOT NULL DEFAULT 0")
+        Exec("ALTER TABLE `gsc_kasippu_trees` ADD COLUMN `last_update` INT(11) NOT NULL DEFAULT 0")
     end
-    Shared.Debug("^2[Bucket]^7 gsc_climb_trees fill_percent/last_update columns ready.")
+    Shared.Debug("^2[Bucket]^7 gsc_kasippu_trees fill_percent/last_update columns ready.")
 
     ---oo[ Load Every Defined Tree + Start Filling On Boot ]oo---
-    local results = Exec('SELECT uid, x, y, z, fill_percent, last_update FROM gsc_climb_trees')
+    local results = Exec('SELECT uid, x, y, z, fill_percent, last_update FROM gsc_kasippu_trees')
     if not results then return end
 
     local now = os.time()
@@ -59,7 +60,7 @@ CreateThread(function()
         end
     end
 
-    Shared.Debug("^2[Bucket]^7 Loaded & started filling " .. #results .. " tree(s) from gsc_climb_trees.")
+    Shared.Debug("^2[Bucket]^7 Loaded & started filling " .. #results .. " tree(s) from gsc_kasippu_trees.")
 end)
 
 ---oo[ Lazily Calculate Current Fill % For a Tree ]oo---
@@ -96,7 +97,7 @@ end
 ---oo[ Save Bucket State to DB ]oo---
 function TreeStore.SaveBucketToDB(uid)
     exports.oxmysql:execute([[
-        UPDATE gsc_climb_trees
+        UPDATE gsc_kasippu_trees
         SET fill_percent = :fill, last_update = :updated
         WHERE uid = :uid
     ]], { uid = uid, fill = TreeBucketFill[uid] or 0.0, updated = TreeBucketLastUpdate[uid] or os.time() })
@@ -129,7 +130,7 @@ CreateThread(function()
                 written[uid] = stamp
                 queries = queries or {}
                 queries[#queries + 1] = {
-                    query = 'UPDATE gsc_climb_trees SET fill_percent = ?, last_update = ? WHERE uid = ?',
+                    query = 'UPDATE gsc_kasippu_trees SET fill_percent = ?, last_update = ? WHERE uid = ?',
                     values = { percent, updated, uid },
                 }
             end
@@ -440,7 +441,7 @@ local function SaveTree(coords, heading, onSaved)
     local correctUid = Shared.GenerateTreeUID(coords)
 
     exports.oxmysql:execute([[
-        INSERT INTO gsc_climb_trees (uid, x, y, z, heading)
+        INSERT INTO gsc_kasippu_trees (uid, x, y, z, heading)
         VALUES (?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
             x = VALUES(x),
@@ -479,7 +480,7 @@ RegisterCommand(Config.TreeAdmin.AddCommand or 'addtree', function(source, args)
     local coords = vector3(Round2(pos.x), Round2(pos.y), Round2(pos.z))
     local heading = Round2((tonumber(args[1]) or 0.0) % 360)
 
-    exports.oxmysql:execute('SELECT uid, x, y, z FROM gsc_climb_trees', {}, function(rows)
+    exports.oxmysql:execute('SELECT uid, x, y, z FROM gsc_kasippu_trees', {}, function(rows)
         local spacing = Config.TreeAdmin.MinTreeSpacing or 0
         for _, row in ipairs(rows or {}) do
             local dist = #(coords - vector3(row.x + 0.0, row.y + 0.0, row.z + 0.0))
@@ -515,7 +516,7 @@ AddEventHandler('nx_trees:server:deleteTree', function(uid)
         return
     end
 
-    exports.oxmysql:execute('SELECT x, y, z FROM gsc_climb_trees WHERE uid = ?', { uid }, function(results)
+    exports.oxmysql:execute('SELECT x, y, z FROM gsc_kasippu_trees WHERE uid = ?', { uid }, function(results)
         local tree = results and results[1]
         if not tree then return end
 
@@ -525,7 +526,7 @@ AddEventHandler('nx_trees:server:deleteTree', function(uid)
             return
         end
 
-        exports.oxmysql:execute('DELETE FROM gsc_climb_trees WHERE uid = ?', { uid }, function(rowsChanged)
+        exports.oxmysql:execute('DELETE FROM gsc_kasippu_trees WHERE uid = ?', { uid }, function(rowsChanged)
             if rowsChanged and rowsChanged > 0 then
                 TreeBucketFill[uid] = nil
                 TreeBucketLastUpdate[uid] = nil
@@ -547,7 +548,7 @@ local function SendTrees(src)
     if lastTreeRequest[src] and (nowMs - lastTreeRequest[src]) < 5000 then return end
     lastTreeRequest[src] = nowMs
 
-    exports.oxmysql:execute('SELECT * FROM gsc_climb_trees', {}, function(results)
+    exports.oxmysql:execute('SELECT * FROM gsc_kasippu_trees', {}, function(results)
         TriggerClientEvent('nx_trees:client:loadTrees', src, results or {})
         Shared.Debug(string.format("^2[DB]^7 Sent %d trees to player %s", results and #results or 0, src))
     end)
@@ -567,6 +568,7 @@ end)
 ---oo[ ONE-TIME Config to Database Migration ]oo---
 CreateThread(function()
     Wait(3000)
+    while not GSC.module('Distillery').TablesReady do Wait(100) end
 
     if not Config.AutoSaveConfigTrees then
         Shared.Debug("^3[DB Init]^7 Config.AutoSaveConfigTrees is disabled, skipping migration")
@@ -578,7 +580,7 @@ CreateThread(function()
         return
     end
 
-    exports.oxmysql:execute('SELECT COUNT(*) as count FROM gsc_climb_trees', {}, function(result)
+    exports.oxmysql:execute('SELECT COUNT(*) as count FROM gsc_kasippu_trees', {}, function(result)
         local dbCount = 0
         if result and #result > 0 then
             dbCount = result[1].count or 0
@@ -593,7 +595,7 @@ CreateThread(function()
                         local uid = Shared.GenerateTreeUID(treeData.coords)
                         local startNow = os.time()
                         exports.oxmysql:execute([[
-                            INSERT INTO gsc_climb_trees (uid, x, y, z, heading, fill_percent, last_update)
+                            INSERT INTO gsc_kasippu_trees (uid, x, y, z, heading, fill_percent, last_update)
                             VALUES (?, ?, ?, ?, ?, 0.00, ?)
                         ]], { uid, treeData.coords.x, treeData.coords.y, treeData.coords.z, treeData.heading or 0.0, startNow })
 
@@ -641,7 +643,7 @@ end, false)
 
 RegisterCommand('listtreesdb', function(source, args, raw)
     if source == 0 then
-        exports.oxmysql:execute('SELECT * FROM gsc_climb_trees', {}, function(results)
+        exports.oxmysql:execute('SELECT * FROM gsc_kasippu_trees', {}, function(results)
             if results and #results > 0 then
                 print("^2=== Trees in Database (" .. #results .. ") ===")
                 for _, tree in ipairs(results) do
@@ -655,7 +657,7 @@ RegisterCommand('listtreesdb', function(source, args, raw)
     end
     if DeniedTreeCommand(source) then return end
 
-    exports.oxmysql:execute('SELECT COUNT(*) as count FROM gsc_climb_trees', {}, function(result)
+    exports.oxmysql:execute('SELECT COUNT(*) as count FROM gsc_kasippu_trees', {}, function(result)
         local count = 0
         if result and #result > 0 then
             count = result[1].count or 0
@@ -673,7 +675,7 @@ end
 
 RegisterCommand('cleartreesdb', function(source, args, raw)
     if source == 0 then
-        exports.oxmysql:execute('DELETE FROM gsc_climb_trees', {}, function(rowsChanged)
+        exports.oxmysql:execute('DELETE FROM gsc_kasippu_trees', {}, function(rowsChanged)
             TreeBucketFill, TreeBucketLastUpdate, TreeCoords = {}, {}, {}
             print("^1[DB]^7 Deleted " .. (rowsChanged or 0) .. " trees from database")
             LogTreesCleared(0, rowsChanged)
@@ -683,7 +685,7 @@ RegisterCommand('cleartreesdb', function(source, args, raw)
 
     if DeniedTreeCommand(source) then return end
 
-    exports.oxmysql:execute('DELETE FROM gsc_climb_trees', {}, function(rowsChanged)
+    exports.oxmysql:execute('DELETE FROM gsc_kasippu_trees', {}, function(rowsChanged)
         TreeBucketFill, TreeBucketLastUpdate, TreeCoords = {}, {}, {}
         GSC.Notify.Send(source, "Cleared " .. (rowsChanged or 0) .. " trees from the database.", 5000)
         LogTreesCleared(source, rowsChanged)
@@ -693,7 +695,7 @@ end, false)
 RegisterCommand('fixduplicates', function(source, args, raw)
     if source == 0 then
         print("^1[FIX]^7 Removing duplicate trees from database...")
-        exports.oxmysql:execute("DELETE FROM gsc_climb_trees WHERE uid NOT LIKE 'climb_tree_%'", {}, function(rowsChanged)
+        exports.oxmysql:execute("DELETE FROM gsc_kasippu_trees WHERE uid NOT LIKE 'climb_tree_%'", {}, function(rowsChanged)
             print("^2[FIX]^7 Removed " .. (rowsChanged or 0) .. " duplicate trees with wrong UID format")
         end)
         return

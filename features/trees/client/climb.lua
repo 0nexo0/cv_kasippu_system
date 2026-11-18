@@ -369,11 +369,11 @@ end
 
 CreateThread(function()
     local name = Config.TreeClimbConf.TreeName or "Coconut Tree"
-    local label = VarString(10, 'LITERAL_STRING', name) -- built once, not every frame
 
     while true do
         if atTop then
-            UiPromptSetActiveGroupThisFrame(TopGroup, label, 0, 0, 0, 0)
+            -- VarString points into a reused scratch buffer: build it on the frame it's used
+            UiPromptSetActiveGroupThisFrame(TopGroup, VarString(10, 'LITERAL_STRING', name), 0, 0, 0, 0)
             Wait(0)
         else
             Wait(active and 250 or 1000) -- not on a tree: look less often
@@ -885,7 +885,7 @@ end
 CreateThread(function()
     CreateClimbPrompt()
 
-    local groupLabel = VarString(10, 'LITERAL_STRING', Config.TreeClimbConf.TreeName or "Coconut Tree") -- built once
+    local groupLabel = Config.TreeClimbConf.TreeName or "Coconut Tree"
     local interactRadius = Config.TreeClimbConf.InteractRadius or 3.0
     local nearestTree, treeData = nil, nil
     local lastScan = 0
@@ -912,7 +912,7 @@ CreateThread(function()
 
             if nearestTree and treeData then
                 sleep = 0
-                UiPromptSetActiveGroupThisFrame(TreeGroup, groupLabel, 0, 0, 0, 0)
+                UiPromptSetActiveGroupThisFrame(TreeGroup, VarString(10, 'LITERAL_STRING', groupLabel), 0, 0, 0, 0)
 
                 local done = ClimbPrompt ~= nil and UiPromptHasHoldModeCompleted(ClimbPrompt)
 
