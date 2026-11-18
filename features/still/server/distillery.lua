@@ -2425,6 +2425,15 @@ AddEventHandler('gsc_kassippu:server:repairBarrel', function(uid)
     SyncBarrelHeat(uid, BarrelHeat[uid] or 0.0, BarrelBrewProgress[uid] or 0, BarrelRemainingBottles[uid] or 0)
 end)
 
+---o[ One mix at a time per still: claimed before anything waits, so a second request can't use the same stash ]o---
+local MixClaim = {}          -- [uid] = os.time() the mix was claimed
+local MIX_CLAIM_SECONDS = 15 -- a claim whose stash read never answered lapses after this
+
+local function MixClaimed(uid)
+    local at = MixClaim[uid]
+    return at ~= nil and (os.time() - at) < MIX_CLAIM_SECONDS
+end
+
 ---o[ Register And Open Barrel Stash ]o---
 RegisterServerEvent('gsc_kassippu:server:openBarrelInv')
 AddEventHandler('gsc_kassippu:server:openBarrelInv', function(uid)
@@ -2445,6 +2454,11 @@ AddEventHandler('gsc_kassippu:server:openBarrelInv', function(uid)
         > (Config.KasiyaBarrelKitConf.KasiyaBarrelDistance + 5.0) then
         Shared.Debug("^1[Warning]^7 Player " .. _source .. " tried to open stash " .. uid .. " from too far away.")
         return
+    end
+
+    ---o[ Not while the wash is being mixed out of it ]o---
+    if MixClaimed(uid) then
+        return GSC.Notify.Send(_source, Config.Text.StashBusyMixing, 3000)
     end
 
     local stage = BarrelStage[uid] or Shared.BarrelStage.IDLE
@@ -2508,15 +2522,32 @@ AddEventHandler('gsc_kassippu:server:startMixing', function(uid, recipeKey, clim
         return GSC.Notify.Send(_source, Config.Text.RecipeUnknown, 4000)
     end
 
+    ---o[ Claim the still now, before the stash read waits: a second request is turned away ]o---
+    if MixClaimed(uid) then return end
+    MixClaim[uid] = os.time()
+
+    ---o[ Shut the stash on everyone else at the still, so nothing leaves it between the read and the clear ]o---
+    local here = BarrelPositions[uid]
+    for _, playerId in ipairs(GetPlayers()) do
+        local target = tonumber(playerId)
+        local ped = target and target ~= _source and GetPlayerPed(playerId)
+        if ped and ped ~= 0 and #(GetEntityCoords(ped) - here) <= 10.0 then
+            exports.vorp_inventory:closeInventory(target)
+        end
+    end
+
     ---o[ Read the barrel ]o---
     RegisterStash(invId)
     exports.vorp_inventory:getCustomInventoryItems(invId, function(storedItems)
-        if BarrelStage[uid] ~= Shared.BarrelStage.FREEZE then return end
+        local function Release() MixClaim[uid] = nil end
+
+        if BarrelStage[uid] ~= Shared.BarrelStage.FREEZE then return Release() end
 
         local stacks = (tonumber(recipe.coconutMl) or 0) > 0 and GSC.Mash.CoconutStacks(_source) or nil
         local mash = GSC.Mash.Evaluate(recipeKey, storedItems, stacks, os.time())
 
         if not mash.ok then
+            Release()
             Shared.Debug("^1[Mixing]^7 Refused: " .. tostring(mash.problems[1]))
             TriggerClientEvent('gsc_kassippu:client:mixPreview', _source, uid, recipeKey, mash)
             return GSC.Notify.Send(_source, mash.problems[1], 5000)
@@ -2525,6 +2556,7 @@ AddEventHandler('gsc_kassippu:server:startMixing', function(uid, recipeKey, clim
         ---o[ Room for the containers that come back (empty pots), before anything is used ]o---
         for item, count in pairs(mash.returns or {}) do
             if not exports.vorp_inventory:canCarryItem(_source, item, count) then
+                Release()
                 return GSC.Notify.Send(_source, string.format(Config.Text.MashNoRoomForReturns, count), 5000)
             end
         end
@@ -2545,6 +2577,7 @@ AddEventHandler('gsc_kassippu:server:startMixing', function(uid, recipeKey, clim
         ---o[ Update Barrel Data ]o---
         BarrelLoaded[uid] = recipeKey
         BarrelStage[uid] = Shared.BarrelStage.MIXING
+        Release() -- the stage guards it from here
         PutOutFire(uid)
 
         BarrelMix[uid] = {

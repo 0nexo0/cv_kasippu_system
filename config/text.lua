@@ -51,6 +51,7 @@ Config.Text = {
 
     ---o[ Mixing and the mash ]o---
     MixingNotReady      = "The barrel is not ready for mixing yet!",
+    StashBusyMixing     = "The wash is being mixed - give it a moment.",
     RecipeUnknown       = "You need that recipe's card in your satchel to brew it.",
     MixingItemsMatched  = "Mixing a %s batch of %s.",                       -- batch name, product
     MashEmpty           = "The barrel is empty - put the ingredients in first (Store Ingredients).",

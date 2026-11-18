@@ -4,6 +4,7 @@ local GuardConf = Config.GuardSpawnConf
 
 local ZoneRoster = {}
 local lastKillReport = {}
+local lastRosterRequest = {} -- [src] = GetGameTimer() of the last requestZoneRoster
 
 ---oo[ THE MEN THEMSELVES ]oo---
 local LEASE_SECONDS = 20
@@ -157,11 +158,13 @@ end
 ---o[ Yard news goes only to players close enough to have its guards on their map, not to the whole server ]o---
 local SEND_MARGIN = 100.0 -- metres past the despawn distance: a player walking off still hears the last change
 
+---o[ Returns the set of players it sent to ]o---
 function Roster.SendNear(zoneData, eventName, ...)
     local _, reach = ZoneRanges(zoneData)
     local limit = reach + SEND_MARGIN
     local limitSq = limit * limit
     local cx, cy = zoneData.coords.x, zoneData.coords.y
+    local sent = {}
 
     for _, playerId in ipairs(GetPlayers()) do
         local target = tonumber(playerId)
@@ -171,9 +174,12 @@ function Roster.SendNear(zoneData, eventName, ...)
             local dx, dy = p.x - cx, p.y - cy
             if (dx * dx + dy * dy) <= limitSq then
                 TriggerClientEvent(eventName, target, ...)
+                sent[target] = true
             end
         end
     end
+
+    return sent
 end
 
 ---o[ Is any player close enough to have this yard's guards on his map? ]o---
@@ -338,6 +344,11 @@ RegisterNetEvent('gsc_kassippu_alert:server:requestZoneRoster')
 AddEventHandler('gsc_kassippu_alert:server:requestZoneRoster', function(zoneName)
     local _source = source
     if type(zoneName) ~= 'string' then return end
+
+    ---o[ A client asks every few seconds at most; anything faster is spam ]o---
+    local now = GetGameTimer()
+    if lastRosterRequest[_source] and (now - lastRosterRequest[_source]) < 1000 then return end
+    lastRosterRequest[_source] = now
 
     if EnsureRoster(zoneName) then
         BroadcastRoster(zoneName, _source)
@@ -537,6 +548,7 @@ end)
 AddEventHandler('playerDropped', function()
     local _source = source
     lastKillReport[_source] = nil
+    lastRosterRequest[_source] = nil
 
     ---o[ His unanswered spawn jobs go to somebody else ]o---
     for _, roster in pairs(ZoneRoster) do

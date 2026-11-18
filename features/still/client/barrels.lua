@@ -674,15 +674,17 @@ local isBubblingPlaying = false
 ---o[ Still ambience: a game sound at the nearest lit still ]o---
 local Ambience = { uid = nil, soundId = nil, prepared = false }
 
-local function StopAmbience()
+---o[ keepSet: moving on to another still keeps the soundset loaded; only leaving them all releases it ]o---
+local function StopAmbience(keepSet)
     if Ambience.soundId then
         Citizen.InvokeNative(0x3210BCB36AF7621B, Ambience.soundId) -- _STOP_SOUND_WITH_ID
         Citizen.InvokeNative(0x353FC880830B88FA, Ambience.soundId) -- RELEASE_SOUND_ID
     end
-    if Ambience.prepared and Config.StillAmbience then
+    if not keepSet and Ambience.prepared and Config.StillAmbience then
         Citizen.InvokeNative(0x531A78D6BF27014B, Config.StillAmbience.SoundSet) -- _RELEASE_SOUNDSET
+        Ambience.prepared = false
     end
-    Ambience.uid, Ambience.soundId, Ambience.prepared = nil, nil, false
+    Ambience.uid, Ambience.soundId = nil, nil
 end
 
 CreateThread(function()
@@ -706,7 +708,7 @@ CreateThread(function()
             end
         end
 
-        if best ~= Ambience.uid then StopAmbience() end
+        if best ~= Ambience.uid then StopAmbience(best ~= nil) end
 
         if best then
             if not Ambience.prepared then

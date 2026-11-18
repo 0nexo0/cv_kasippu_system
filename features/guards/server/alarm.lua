@@ -94,7 +94,12 @@ RegisterNetEvent('gsc_kassippu_alert:server:AreaTrespass', function(coords, gard
 
     if not isUpdate then
         ---o[ Everybody in that yard, not just the man who made the noise ]o---
-        GSC.Roster.SendNear(zoneData, 'gsc_kassippu_alert:client:AlertGuards', zoneName, gardenLabel, _source, markerAt)
+        local sent = GSC.Roster.SendNear(zoneData, 'gsc_kassippu_alert:client:AlertGuards', zoneName, gardenLabel, _source, markerAt)
+
+        ---o[ The one who set it off always hears it, even from a big yard's far corner ]o---
+        if not sent[_source] then
+            TriggerClientEvent('gsc_kassippu_alert:client:AlertGuards', _source, zoneName, gardenLabel, _source, markerAt)
+        end
 
         ---o[ An empty yard hears about it too ]o---
         GSC.Roster.RushBrokenWave(zoneKey)

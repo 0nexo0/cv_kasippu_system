@@ -92,6 +92,22 @@ up to date (green), outdated with the changelog lines from that JSON (red), or a
   (new server event `gsc_kassippu:server:crateCountAsk`, at most once per crate every 5 s per player), so a player
   coming from further away never sees an old number of bottles.
 
+- **Security: a mix could be run twice from one stash (empty pots duplicated).** `startMixing` checked for FREEZE but only
+  set MIXING after the stash read and `addItem` had yielded, so two requests close together (a cheater firing it twice,
+  or two crew at once) both passed and both got the `returnItem` pots. The still is now claimed (`MixClaim`) before
+  anything waits, a second request is turned away, and the claim is released on every refusal or once the stage is
+  MIXING (it also lapses after 15 s if the stash read never answers).
+- **Security: the stash can't be emptied while a mix reads it.** Starting a mix closes the inventory of everyone else
+  within 10 m of the still, and the stash refuses to open while a mix is claimed (new text
+  `Config.Text.StashBusyMixing`). Before, a crew member with the stash open could take the full pots out after they
+  were counted, and the mix still went ahead.
+- **`requestZoneRoster` throttled** to once a second per player (it only answers the sender, so this stops spam).
+- **A trespasser always hears their own alarm.** If the yard is big enough that the player who set it off is outside
+  `GSC.Roster.SendNear`'s range, they now get `AlertGuards` directly. `Roster.SendNear` now returns the set of
+  players it sent to.
+- **Still ambience keeps its soundset loaded while you move between stills**, and only releases it when no lit still
+  is in range. Before, it released and reloaded it every time the nearest still changed.
+
 ### Removed
 - **Radial menu icons trimmed: `nui/vendor/radialmenu.js` 1.1 MB → 66 KB.** Its `icos` table carried every Font
   Awesome Free icon (1,385); it now keeps the 71 whose names appear in the resource's Lua or `nui/script.js`
