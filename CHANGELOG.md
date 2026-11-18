@@ -74,6 +74,12 @@ up to date (green), outdated with the changelog lines from that JSON (red), or a
 ### Added
 - **`Items/items.sql`**: every item the script uses (27), as one `INSERT IGNORE INTO items` for vorp_inventory.
   Safe to run again; `id` is left to the database. Item pictures are in `Items/Images/`.
+- **A lit still now sounds alive between the bubbling.** New `Config.StillAmbience` (`config/still.lua`) plays the
+  game's own `Cauldron_Boil` sound (`RPRSN_Sounds`) from the still while its fire burns, in the stages where the
+  bubbling `.ogg` is quiet (IDLE, FREEZE, MID_CLIMB, HEAT_PAUSE, FINAL_PUSH, COMPLETED). Only the nearest still
+  within `Range` (12 m) plays it. The sound comes from the still prop, so it fades as you walk away, and each
+  player hears it only on their own client. A one-shot sound is started again when it ends.
+  `Enabled = false` turns it off, and `SoundSet` / `SoundName` take any other game sound.
 - **Fittings slip beside the still's book.** Opening the book at your still (owner and crew) now shows a slip
   on the right with the Copper coil, Iron hoops and Pressure gauge: what each one does, whether it is fitted,
   and a **Fit** button. Fit takes the part from your satchel. Using the part from the satchel at the still still works.

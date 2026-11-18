@@ -671,6 +671,69 @@ end)
 ---o[ Track sound state globally for this client ]o---
 local isBubblingPlaying = false
 
+---o[ Still ambience: a game sound at the nearest lit still ]o---
+local Ambience = { uid = nil, soundId = nil, prepared = false }
+
+local function StopAmbience()
+    if Ambience.soundId then
+        Citizen.InvokeNative(0x3210BCB36AF7621B, Ambience.soundId) -- _STOP_SOUND_WITH_ID
+        Citizen.InvokeNative(0x353FC880830B88FA, Ambience.soundId) -- RELEASE_SOUND_ID
+    end
+    if Ambience.prepared and Config.StillAmbience then
+        Citizen.InvokeNative(0x531A78D6BF27014B, Config.StillAmbience.SoundSet) -- _RELEASE_SOUNDSET
+    end
+    Ambience.uid, Ambience.soundId, Ambience.prepared = nil, nil, false
+end
+
+CreateThread(function()
+    local conf = Config.StillAmbience
+    if not (conf and conf.Enabled) then return end
+
+    local stages = {}
+    for _, stage in ipairs(conf.Stages or {}) do stages[stage] = true end
+    local range = conf.Range or 12.0
+
+    while true do
+        local pos = GetEntityCoords(PlayerPedId())
+        local best, bestDist = nil, range
+
+        for uid, info in pairs(barrelProps) do
+            if info.entity and DoesEntityExist(info.entity)
+                and stages[BarrelStage[uid] or Shared.BarrelStage.IDLE]
+                and (not conf.OnlyWhenLit or (info.dressing and info.dressing.lit == true)) then
+                local dist = #(info.pos - pos)
+                if dist < bestDist then best, bestDist = uid, dist end
+            end
+        end
+
+        if best ~= Ambience.uid then StopAmbience() end
+
+        if best then
+            if not Ambience.prepared then
+                Ambience.prepared = Citizen.InvokeNative(0xD9130842D7226045, conf.SoundSet, 0,
+                    Citizen.ResultAsInteger()) == 1 -- PREPARE_SOUNDSET
+            end
+
+            ---o[ Start it, and start it again if the sound is a one-shot that ended ]o---
+            if Ambience.prepared and (not Ambience.soundId
+                    or Citizen.InvokeNative(0x84848E1C0FC67DBB, Ambience.soundId, Citizen.ResultAsInteger()) == 1) then -- _HAS_SOUND_ID_FINISHED
+                if Ambience.soundId then Citizen.InvokeNative(0x353FC880830B88FA, Ambience.soundId) end -- RELEASE_SOUND_ID
+                local id = GetSoundId()
+                if id and id ~= -1 then
+                    Citizen.InvokeNative(0xF1C5310FEAA36B48, id, conf.SoundName, barrelProps[best].entity,
+                        conf.SoundSet, false, 0) -- _PLAY_SOUND_FROM_ENTITY_WITH_SET
+                    Ambience.soundId = id
+                else
+                    Ambience.soundId = nil
+                end
+                Ambience.uid = best
+            end
+        end
+
+        Wait(best and 500 or 1500)
+    end
+end)
+
 local groupLabelCache = {}
 ---o[ A stage as the player reads it ]o---
 local function StageInfo(stage)
@@ -2407,6 +2470,7 @@ AddEventHandler('onResourceStop', function(resourceName)
     ghostEntity = nil
     isPlacing = false
 
+    StopAmbience()
     for _, info in pairs(barrelProps) do DespawnBarrelProp(info) end
     for _, debris in ipairs(wreckage) do DeleteLocalProp(debris) end
 

@@ -112,6 +112,16 @@ Config.Mixing = {
     },
 }
 
+---o[ Still Ambience - a game sound at a lit still while the bubbling is quiet ]o---
+Config.StillAmbience = {
+    Enabled     = true,
+    SoundSet    = "RPRSN_Sounds",  -- game soundset (femga rdr3_discoveries audio/soundsets)
+    SoundName   = "Cauldron_Boil", -- sound in that set; played from the still, so it fades with distance
+    Range       = 12.0,            -- metres: the nearest still this close is heard
+    OnlyWhenLit = true,            -- only while the still's fire burns
+    Stages      = { "IDLE", "FREEZE", "MID_CLIMB", "HEAT_PAUSE", "FINAL_PUSH", "COMPLETED" }, -- MIXING / FERMENTING / BREWING have the bubbling
+}
+
 ---o[ Fermentation ]o---
 Config.Fermentation = {
     Enabled      = true, -- false: straight from mixing to heating
