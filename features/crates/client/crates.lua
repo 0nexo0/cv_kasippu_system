@@ -883,6 +883,11 @@ local function ClimatePreviewText(reading, band, ageRate, keepRate)
         reading.sheltered and Config.Text.CrateClimateIndoors or "", ageRate, keepRate)
 end
 
+---o[ The carry pose while placing lives in barrels.lua (GSC.Barrels.StartCarry / KeepCarry / StopCarry) ]o---
+local function Carry(fn, ...)
+    if GSC.Barrels ~= nil and GSC.Barrels[fn] then GSC.Barrels[fn](...) end
+end
+
 local function StartCratePlacement()
     if isPlacing then return end
 
@@ -904,9 +909,11 @@ local function StartCratePlacement()
         local rotZ = GetEntityHeading(ped)
         local climateConf = Config.CrateAging.Climate or {}
         local lastRead, shownBand = 0, nil
+        Carry("StartCarry", "crate", function() return isPlacing end) -- Config.AnimConf.PlacementCarry.crate
 
         while isPlacing do
             Wait(0)
+            Carry("KeepCarry")
 
             if IsControlPressed(1, keys.KasiyaBarrelRotateLeftKey) then rotZ = rotZ + 2.0 end
             if IsControlPressed(1, keys.KasiyaBarrelRotateRightKey) then rotZ = rotZ - 2.0 end
@@ -943,6 +950,7 @@ local function StartCratePlacement()
                     local reading = ReadClimate(ped, ghostPos)
                     DeleteLocal(ghostEntity)
                     ghostEntity, isPlacing = nil, false
+                    Carry("StopCarry") -- the server answers with the put-down (place_crate)
 
                     TriggerServerEvent('gsc_kassippu:server:placeCrate',
                         { x = ghostPos.x, y = ghostPos.y, z = ghostPos.z }, heading, reading)
@@ -953,6 +961,7 @@ local function StartCratePlacement()
             if IsControlJustPressed(0, keys.KasiyaBarrelPlacementCanselKey) then
                 DeleteLocal(ghostEntity)
                 ghostEntity, isPlacing = nil, false
+                Carry("StopCarry")
                 GSC.Notify.Objective(Config.Text.CratePlacementCancel, 3000)
                 break
             end

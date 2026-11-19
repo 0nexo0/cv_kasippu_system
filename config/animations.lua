@@ -21,6 +21,30 @@ Config.AnimConf = {
     BrewProductAnimName = "under_trans_over_a",
     BrewProductAnimTime = 4000,
 
+    ---o[ Carried while choosing where it goes (a kind = nil: no carry pose; prop = nil: empty hands) ]o---
+    PlacementCarry = {
+        still = { -- the still (barrel kit)
+            dict = "mech_carry_box", anim = "idle", flag = 31, -- arms out, both hands under a box; can walk and turn
+            prop = { model = "p_barrel010x", bone = "SKEL_L_Hand",
+                offset = vector3(-0.05, -0.09, 0.18), rotation = vector3(320.69, 714.89, 361.4) },
+        },
+        water = { -- the water barrel
+            dict = "mech_carry_box", anim = "idle", flag = 31,
+            prop = { model = "p_barrel010x", bone = "SKEL_L_Hand",
+                offset = vector3(-0.05, -0.09, 0.18), rotation = vector3(320.69, 714.89, 361.4) },
+        },
+        rack = { -- the log rack (a small wooden crate stands in for it)
+            dict = "mech_carry_box", anim = "idle", flag = 31,
+            prop = { model = "p_chair_crate02x", bone = "SKEL_L_Hand",
+                offset = vector3(0.1, -0.14, 0.21), rotation = vector3(263.29, 619.19, 334.3) },
+        },
+        crate = { -- the aging crate (a bottle crate)
+            dict = "mech_carry_box", anim = "idle", flag = 31,
+            prop = { model = "p_bottlecrate_mil", bone = "SKEL_L_Hand",
+                offset = vector3(0.1, -0.14, 0.26), rotation = vector3(263.29, 619.19, 334.3) },
+        },
+    },
+
     ---o[ Setting things down / picking them up, and the still's chores ]o---
     Actions = {
         ---o[ Setting each thing down ]o---
@@ -36,7 +60,7 @@ Config.AnimConf = {
 
         pickup = { scenario = "WORLD_HUMAN_BOX_PICKUP_1",    time = 2500 }, -- picking one up again, or taking the tarp down
         fill   = { scenario = "WORLD_HUMAN_BUCKET_POUR_LOW", time = 3500 }, -- a bucket into the water barrel
-        stack  = { scenario = "WORLD_HUMAN_BOX_PUT_DOWN_1",  time = 2500 }, -- logs onto the log rack (no log in hand)
+        stack  = { scenario = "WORLD_HUMAN_BOX_PUT_DOWN_1",  time = 2500 }, -- one log onto the log rack, per prompt hold (no log in hand)
         scrub  = { scenario = "WORLD_HUMAN_CLEAN_TABLE",     time = 4000 }, -- scrubbing the barrel out
         repair = { scenario = "WORLD_HUMAN_HAMMER_KNEEL",    time = 4000 }, -- mending the staves with a barrel repair kit
         tarp   = { scenario = "WORLD_HUMAN_HAMMER_KNEEL",    time = 3500 }, -- staking the tarp over the still

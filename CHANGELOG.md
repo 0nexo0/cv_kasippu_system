@@ -19,7 +19,48 @@ up to date (green), outdated with the changelog lines from that JSON (red), or a
 
 ## [Unreleased]
 
+### Added
+- **Carrying the still, water barrel, log rack and aging crate while placing them.** While a placement ghost is out,
+  the player holds a prop in a carry pose (`mech_carry_box` / `idle`, flag 31, so they can still walk and turn): a
+  small barrel (`p_barrel010x`) for the still and the water barrel, a small wooden crate (`p_chair_crate02x`) for the
+  log rack, a bottle crate (`p_bottlecrate_mil`) for the aging crate. Placing or cancelling drops the pose and the
+  prop; the server's existing `place_still` / `place_water` / `place_rack` / `place_crate` put-down then plays. The
+  pose comes back if something interrupts it, and is cleared on resource stop.
+  New `Config.AnimConf.PlacementCarry.still / .water / .rack / .crate` (dict, anim, flag, prop
+  model/bone/offset/rotation); setting a kind to `nil` turns its carry pose off, `prop = nil` keeps empty hands.
+  - `stations.lua` and `crates.lua` use the same helper through `GSC.Barrels.StartCarry / KeepCarry / StopCarry`.
+
 ### Changed
+- **The Log Rack is stacked one log at a time, like filling the Water Barrel.** Each hold of the Stack prompt (or
+  the F2 wedge) plays `Config.AnimConf.Actions.stack` (2.5 s). Only when it runs to the end does the server take
+  **one** log (the first the player carries, in `Config.Stations.LogRack.BurnOrder`) and put it on the rack. Before,
+  it took every log in the satchel at once. Walking off (more than 1 m), falling, or the scenario breaking cancels it,
+  and the log stays in the satchel.
+  - Server: `gsc_kassippu:server:stockStation` now only starts the job and sends the new
+    `gsc_kassippu:client:stationStack`. The client answers with the new `gsc_kassippu:server:stockStationDone`, which
+    checks the time, distance, crew right, room and log count again before taking anything. The water barrel and the
+    rack share one job per player, so a player can't pour and stack at the same time.
+  - Text: `Stations.Stack` "Stack Logs" → "Stack a Log". New `Stations.StackedOne` (log name, now, capacity) and
+    `Stations.StackCancelled`. Without `StackedOne` (an older `config/text.lua`), the old `Stacked` line is used.
+
+### Removed
+- Unused items in `config/items.lua`: `RecipeArrack`, `SpiritPerfect`, `SpiritGood`, `SpiritNormal`,
+  and the commented-out Arrack recipe in `config/recipes.lua`.
+- **`coconut_water` item** (`Config.Items.CoconutWater`, `Config.CoconutBucketConf.CoconutWaterItem`) and
+  using a `filled_pot` to pour it out. Remove `coconut_water` from the `items` table on the server;
+  any `coconut_water` players still carry no longer counts at the still.
+
+### Fixed
+- **The Water Barrel / Log Rack F2 menu (and key prompts) show up as soon as you walk up.** Before, you often had to
+  shuffle around them first. Two causes:
+  - The "at a station" check measured in 3D from the ped (about 1 m above the ground) to the station's ground point,
+    so 1.5 m only reached about 1.1 m across the ground. A freshly placed station sits 1.5 m in front of you, so you
+    started outside it. It now measures across the ground (with up to 2.5 m height difference allowed), and
+    `Config.Stations.InteractRadius` defaults to 2.0 (was 1.5). The "closer to the station than to the still" choice
+    for the key prompts is measured across the ground too. The server's own range check is unchanged and still covers it.
+  - The prop / range sweep could sleep 3 s when no station was near. It now also runs as soon as the server sends
+    station data (a new, moved or removed station), and the "which one am I at" check runs every 0.5 s with none in
+    range (was 1 s).
 - **Coconut tree roots are hidden.** New `Config.TreeClimbConf.SinkDepth` (2.0): the tree model is pushed this many
   metres into the ground on spawn. The climb now starts `SinkDepth` higher up the trunk and still ends at the crown
   (which sank with it), so the rung count is the same and each rung is a little shorter. `SinkDepth = 0` gives the
@@ -71,15 +112,6 @@ up to date (green), outdated with the changelog lines from that JSON (red), or a
     so per pot 1 makes Light, 2 Regular and 4 Strong. The instructions text says this.
 - **"Palm Sap" removed from `Config.Text.TendWashIngredients`.** The tend minigame's fallback tray is now
   Jaggery, Yeast, Coconut Flower Sap, Treacle (still 4, the most the tray shows).
-
-### Removed
-- Unused items in `config/items.lua`: `RecipeArrack`, `SpiritPerfect`, `SpiritGood`, `SpiritNormal`,
-  and the commented-out Arrack recipe in `config/recipes.lua`.
-- **`coconut_water` item** (`Config.Items.CoconutWater`, `Config.CoconutBucketConf.CoconutWaterItem`) and
-  using a `filled_pot` to pour it out. Remove `coconut_water` from the `items` table on the server;
-  any `coconut_water` players still carry no longer counts at the still.
-
-### Fixed
 - **Pol Raa could not be previewed or mixed (`mash.lua:504: bad argument #2 to 'insert' (position out of
   bounds)`).** The mix slip put the freshness line at position 4, but a recipe with no fruit and no spirit line
   (Pol Raa, now that its sap comes from the pot) only has 2 lines, so the insert threw inside the

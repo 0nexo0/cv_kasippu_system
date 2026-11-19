@@ -8,6 +8,7 @@ local placing = false
 local inRange = {}
 local near = nil
 local holding = false
+local streamNow = false -- set when the server sends stations: sweep at once
 
 local KINDS = { water = "WaterBarrel", rack = "LogRack" }
 local MODELS = { water = "WaterBarrelModel", rack = "LogRackModel" }
@@ -108,47 +109,53 @@ AddEventHandler('gsc_kassippu:client:stations', function(uid, data)
         if not (data and data[kind]) or Moved(old[kind], data[kind]) then Drop(uid, kind) end
     end
     sites[uid] = data
+    streamNow = true -- a new / moved one shows at once, not after the next sweep
 end)
 
 RegisterNetEvent('gsc_kassippu:client:allStations')
 AddEventHandler('gsc_kassippu:client:allStations', function(all)
     for uid in pairs(sites) do DropAll(uid) end
     sites = type(all) == 'table' and all or {}
+    streamNow = true
 end)
 
 CreateThread(function()
     Wait(2000)
     TriggerServerEvent('gsc_kassippu:server:requestStations')
 
-    local sleep = 1000
+    local nextSweep = 0
     while true do
-        Wait(sleep)
-        sleep = 1000
-        if On() then
-            local pos = GetEntityCoords(PlayerPedId())
-            local range = Conf().StreamDistance or 80.0
-            local rangeSq, wakeSq = range * range, (range + 50.0) * (range + 50.0)
-            local nearestSq = math.huge
-            local seen = {}
-            for uid, site in pairs(sites) do
-                for kind in pairs(KINDS) do
-                    local spot = site[kind]
-                    local distSq = math.huge
-                    if spot then
-                        local dx, dy, dz = pos.x - spot.x, pos.y - spot.y, pos.z - spot.z
-                        distSq = dx * dx + dy * dy + dz * dz
-                    end
-                    if distSq < nearestSq then nearestSq = distSq end
-                    if distSq <= rangeSq then
-                        Spawn(uid, kind, spot)
-                        seen[uid] = true
-                    elseif inRange[uid] then
-                        Drop(uid, kind)
+        Wait(100)
+        if streamNow or GetGameTimer() >= nextSweep then
+            streamNow = false
+            local sleep = 1000
+            if On() then
+                local pos = GetEntityCoords(PlayerPedId())
+                local range = Conf().StreamDistance or 80.0
+                local rangeSq, wakeSq = range * range, (range + 50.0) * (range + 50.0)
+                local nearestSq = math.huge
+                local seen = {}
+                for uid, site in pairs(sites) do
+                    for kind in pairs(KINDS) do
+                        local spot = site[kind]
+                        local distSq = math.huge
+                        if spot then
+                            local dx, dy, dz = pos.x - spot.x, pos.y - spot.y, pos.z - spot.z
+                            distSq = dx * dx + dy * dy + dz * dz
+                        end
+                        if distSq < nearestSq then nearestSq = distSq end
+                        if distSq <= rangeSq then
+                            Spawn(uid, kind, spot)
+                            seen[uid] = true
+                        elseif inRange[uid] then
+                            Drop(uid, kind)
+                        end
                     end
                 end
+                inRange = seen
+                if nearestSq > wakeSq then sleep = 3000 end -- none near: look again less often
             end
-            inRange = seen
-            if nearestSq > wakeSq then sleep = 3000 end -- none near: look again less often
+            nextSweep = GetGameTimer() + sleep
         end
     end
 end)
@@ -187,9 +194,16 @@ AddEventHandler('gsc_kassippu:client:stationsBoom', function(uid, spots)
 end)
 
 ---oo[ Which station the player stands at ]oo---
+local NEAR_HEIGHT = 2.5 -- metres above / below the spot that still count as at it
+
+local function FlatDist(a, b)
+    local dx, dy = a.x - b.x, a.y - b.y
+    return math.sqrt(dx * dx + dy * dy)
+end
+
 CreateThread(function()
     while true do
-        Wait(next(inRange) == nil and 1000 or 250)
+        Wait(next(inRange) == nil and 500 or 250)
         local found = nil
         if On() and not placing and next(inRange) ~= nil then
             local pos = GetEntityCoords(PlayerPedId())
@@ -199,8 +213,9 @@ CreateThread(function()
                 for kind in pairs(KINDS) do
                     local spot = site[kind]
                     if spot then
-                        local dist = #(pos - vector3(spot.x, spot.y, spot.z))
-                        if dist <= radius and (not found or dist < found.dist) then
+                        local dist = FlatDist(pos, spot) -- the spot is at ground level, the ped ~1 m above it
+                        if dist <= radius and math.abs(pos.z - spot.z) <= NEAR_HEIGHT
+                            and (not found or dist < found.dist) then
                             found = { uid = uid, kind = kind, dist = dist }
                         end
                     end
@@ -345,7 +360,7 @@ CreateThread(function()
         if at and not busy and FillPrompt then
             local uid, _, stillPos = nil, nil, nil
             if GSC.Barrels ~= nil and GSC.Barrels.Here then uid, _, stillPos = GSC.Barrels.Here() end
-            local stillDist = stillPos and #(GetEntityCoords(PlayerPedId()) - stillPos) or math.huge
+            local stillDist = stillPos and FlatDist(GetEntityCoords(PlayerPedId()), stillPos) or math.huge
             claim = at.dist < stillDist
         end
 
@@ -393,23 +408,22 @@ CreateThread(function()
     end
 end)
 
----oo[ Fill Water Barrel ]oo---
-local POUR_MAX_MOVE = 1.0
+---oo[ Fill Water Barrel / Stack Log Rack: one bucket or one log, played out, then the server is told ]oo---
+local WORK_MAX_MOVE = 1.0
 
-RegisterNetEvent('gsc_kassippu:client:stationPour')
-AddEventHandler('gsc_kassippu:client:stationPour', function(uid, ms)
+local function PlayWork(action, uid, ms, doneEvent)
     if pouring or type(uid) ~= 'string' then return end
     pouring = true
 
     CreateThread(function()
         local function Report(done)
-            TriggerServerEvent('gsc_kassippu:server:fillStationDone', uid, done == true)
+            TriggerServerEvent(doneEvent, uid, done == true)
         end
 
         if GSC.Barrels ~= nil and GSC.Barrels.PlayWatched then
-            local ok, err = pcall(GSC.Barrels.PlayWatched, "fill", tonumber(ms) or 3500, POUR_MAX_MOVE, Report)
+            local ok, err = pcall(GSC.Barrels.PlayWatched, action, tonumber(ms) or 3000, WORK_MAX_MOVE, Report)
             if not ok then
-                print("^1[Stations]^7 pour failed: " .. tostring(err))
+                print("^1[Stations]^7 " .. action .. " failed: " .. tostring(err))
                 Report(false)
             end
         else
@@ -418,9 +432,25 @@ AddEventHandler('gsc_kassippu:client:stationPour', function(uid, ms)
 
         pouring = false
     end)
+end
+
+RegisterNetEvent('gsc_kassippu:client:stationPour')
+AddEventHandler('gsc_kassippu:client:stationPour', function(uid, ms)
+    PlayWork("fill", uid, ms, 'gsc_kassippu:server:fillStationDone')
+end)
+
+RegisterNetEvent('gsc_kassippu:client:stationStack')
+AddEventHandler('gsc_kassippu:client:stationStack', function(uid, ms)
+    PlayWork("stack", uid, ms, 'gsc_kassippu:server:stockStationDone')
 end)
 
 ---oo[ Setting one down ]oo---
+
+---o[ The carry pose while placing lives in barrels.lua (GSC.Barrels.StartCarry / KeepCarry / StopCarry) ]o---
+local function Carry(fn, ...)
+    if GSC.Barrels ~= nil and GSC.Barrels[fn] then GSC.Barrels[fn](...) end
+end
+
 local function StartPlacement(uid, kind)
     if placing or not KINDS[kind] then return end
     local stillPos = GSC.Barrels ~= nil and GSC.Barrels.Position(uid) or nil
@@ -442,9 +472,11 @@ local function StartPlacement(uid, kind)
 
     CreateThread(function()
         local rotZ = GetEntityHeading(ped)
+        Carry("StartCarry", kind, function() return placing end) -- Config.AnimConf.PlacementCarry.water / .rack
 
         while placing do
             Wait(0)
+            Carry("KeepCarry")
             if IsControlPressed(1, keys.KasiyaBarrelRotateLeftKey) then rotZ = rotZ + 2.0 end
             if IsControlPressed(1, keys.KasiyaBarrelRotateRightKey) then rotZ = rotZ - 2.0 end
 
@@ -471,6 +503,7 @@ local function StartPlacement(uid, kind)
                     local heading = GetEntityHeading(ghost)
                     DeleteProp(ghost)
                     placing = false
+                    Carry("StopCarry") -- the server answers with the put-down (place_water / place_rack)
                     TriggerServerEvent('gsc_kassippu:server:placeStation', uid, kind,
                         { x = spot.x, y = spot.y, z = spot.z }, heading)
                     break
@@ -480,6 +513,7 @@ local function StartPlacement(uid, kind)
             if IsControlJustPressed(0, keys.KasiyaBarrelPlacementCanselKey) then
                 DeleteProp(ghost)
                 placing = false
+                Carry("StopCarry")
                 GSC.Notify.Objective(Text().Cancelled, 3000)
                 break
             end

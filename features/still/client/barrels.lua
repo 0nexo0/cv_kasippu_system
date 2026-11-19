@@ -2289,6 +2289,73 @@ function Barrels.CloseJournal()
     SendNUIMessage({ action = "closeUI" })
 end
 
+---o[ Carrying what is being placed (Config.AnimConf.PlacementCarry[kind]) ]o---
+local carry = nil -- { spec, dict, prop, nextCheck }
+
+local function StopPlacementCarry()
+    local c = carry
+    if not c then return end
+    carry = nil
+
+    local ped = PlayerPedId()
+    if IsEntityPlayingAnim(ped, c.dict, c.spec.anim, 3) then StopAnimTask(ped, c.dict, c.spec.anim, 1.0) end
+    RemoveAnimDict(c.dict)
+    DeleteLocalProp(c.prop)
+end
+
+---o[ stillPlacing() turns false once that placement is over ]o---
+local function StartPlacementCarry(kind, stillPlacing)
+    StopPlacementCarry()
+    local spec = (Config.AnimConf.PlacementCarry or {})[kind]
+    if not spec or not spec.dict or not spec.anim then return end
+
+    RequestAnimDict(spec.dict)
+    local started = GetGameTimer()
+    while not HasAnimDictLoaded(spec.dict) do
+        if GetGameTimer() - started > 5000 then
+            Shared.Debug("^3[Anim]^7 Anim Load Fail: " .. spec.dict)
+            return
+        end
+        Wait(10)
+    end
+    if not stillPlacing() then return RemoveAnimDict(spec.dict) end -- placing ended while it loaded
+
+    local c = { spec = spec, dict = spec.dict, nextCheck = 0 }
+    carry = c
+    local ped = PlayerPedId()
+    TaskPlayAnim(ped, spec.dict, spec.anim, 8.0, -8.0, -1, spec.flag or 31, 0, false, false, false)
+
+    local p = spec.prop
+    local hash = p and p.model and LoadPropModel(p.model)
+    if not hash or carry ~= c then return end -- no prop, or placing ended while it loaded
+
+    local pos = GetEntityCoords(ped)
+    c.prop = CreateObject(hash, pos.x, pos.y, pos.z, true, true, false)
+    SetEntityCollision(c.prop, false, false)
+    local off = p.offset or vector3(0.0, 0.0, 0.0)
+    local rot = p.rotation or vector3(0.0, 0.0, 0.0)
+    AttachEntityToEntity(c.prop, ped, GetEntityBoneIndexByName(ped, p.bone or "SKEL_L_Hand"),
+        off.x, off.y, off.z, rot.x, rot.y, rot.z, true, true, false, true, 1, true)
+    SetModelAsNoLongerNeeded(hash)
+end
+
+---o[ Back into the carry pose if something knocked him out of it (call every frame) ]o---
+local function KeepPlacementCarry()
+    local c = carry
+    if not c or GetGameTimer() < c.nextCheck then return end
+    c.nextCheck = GetGameTimer() + 1000
+
+    local ped = PlayerPedId()
+    if not IsEntityPlayingAnim(ped, c.dict, c.spec.anim, 3) and not IsPedRagdoll(ped) then
+        TaskPlayAnim(ped, c.dict, c.spec.anim, 8.0, -8.0, -1, c.spec.flag or 31, 0, false, false, false)
+    end
+end
+
+---o[ For GSC.Stations ]o---
+function Barrels.StartCarry(kind, stillPlacing) StartPlacementCarry(kind, stillPlacing) end
+function Barrels.KeepCarry() KeepPlacementCarry() end
+function Barrels.StopCarry() StopPlacementCarry() end
+
 local function StartBarrelPlacement()
     if isPlacing then return end
 
@@ -2306,9 +2373,11 @@ local function StartBarrelPlacement()
 
     CreateThread(function()
         local rotZ = 0.0
+        StartPlacementCarry("still", function() return isPlacing end)
 
         while isPlacing do
             Wait(0)
+            KeepPlacementCarry()
 
             if IsControlPressed(1, Config.InteractKeys.KasiyaBarrelRotateLeftKey) then rotZ = rotZ + 2.0 end
             if IsControlPressed(1, Config.InteractKeys.KasiyaBarrelRotateRightKey) then rotZ = rotZ - 2.0 end
@@ -2343,6 +2412,7 @@ local function StartBarrelPlacement()
 
                     DeleteEntity(ghostEntity)
                     ghostEntity, isPlacing = nil, false
+                    StopPlacementCarry() -- the server answers with the put-down (place_still)
 
                     TriggerServerEvent('gsc_kassippu:server:saveBarrel', uid,
                         { x = finalCoords.x, y = finalCoords.y, z = finalCoords.z }, finalHeading)
@@ -2353,6 +2423,7 @@ local function StartBarrelPlacement()
             if IsControlJustPressed(0, Config.InteractKeys.KasiyaBarrelPlacementCanselKey) then
                 DeleteEntity(ghostEntity)
                 ghostEntity, isPlacing = nil, false
+                StopPlacementCarry()
                 GSC.Notify.Objective(Config.Text.KasiyaBarrelPlacementCansel, 3000)
                 break
             end
@@ -2470,6 +2541,7 @@ AddEventHandler('onResourceStop', function(resourceName)
     end
     ghostEntity = nil
     isPlacing = false
+    StopPlacementCarry()
 
     StopAmbience()
     for _, info in pairs(barrelProps) do DespawnBarrelProp(info) end

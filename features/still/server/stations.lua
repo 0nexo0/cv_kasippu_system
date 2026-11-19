@@ -364,28 +364,50 @@ local function AtStation(src, uid, kind)
     return spot ~= nil and Near(src, spot, (Conf().InteractRadius or 1.5) + 2.0)
 end
 
----oo[ Fill Water Barrel ]oo---
-local Pouring = {}
-local POUR_SLACK = 750
-local POUR_LOST  = 5000
+---oo[ Filling the water barrel / stacking the log rack: one bucket or one log at a time, each with its animation ]oo---
+local Working = {}      -- [src] = { uid, kind, ends }
+local WORK_SLACK = 750  -- ms: "done" may come this much before the animation's end
+local WORK_LOST  = 5000 -- ms after its end: a job never reported back is forgotten
 
-local function PourMs()
-    local a = Config.AnimConf and Config.AnimConf.Actions and Config.AnimConf.Actions.fill
-    return math.floor(tonumber(a and a.time) or 3500)
+local ACTION = { water = "fill", rack = "stack" } -- Config.AnimConf.Actions
+local DEFAULT_MS = { water = 3500, rack = 2500 }
+
+local function WorkMs(kind)
+    local a = Config.AnimConf and Config.AnimConf.Actions and Config.AnimConf.Actions[ACTION[kind]]
+    return math.floor(tonumber(a and a.time) or DEFAULT_MS[kind])
+end
+
+local function IsWorking(src)
+    local job = Working[src]
+    return job ~= nil and GetGameTimer() < job.ends + WORK_LOST
+end
+
+local function StartWork(src, uid, kind)
+    local ms = WorkMs(kind)
+    Working[src] = { uid = uid, kind = kind, ends = GetGameTimer() + ms }
+    return ms
+end
+
+---o[ "ok" when the animation really ran to its end, "cancelled" when he stopped, nil otherwise ]o---
+local function EndWork(src, uid, kind, done)
+    local job = Working[src]
+    if not job or job.uid ~= uid or job.kind ~= kind then return nil end
+    Working[src] = nil
+    if done ~= true then return "cancelled" end
+    if GetGameTimer() < job.ends - WORK_SLACK then return nil end -- "done" before it could be
+    return "ok"
 end
 
 AddEventHandler('playerDropped', function()
-    Pouring[source] = nil
+    Working[source] = nil
 end)
 
+---oo[ Fill Water Barrel ]oo---
 RegisterServerEvent('gsc_kassippu:server:fillStation')
 AddEventHandler('gsc_kassippu:server:fillStation', function(uid)
     local _source = source
     if not Shared.GetChar(_source) or not On() or type(uid) ~= 'string' then return end
-
-    local now = GetGameTimer()
-    local pour = Pouring[_source]
-    if pour and now < pour.ends + POUR_LOST then return end -- already pouring: one at a time
+    if IsWorking(_source) then return end -- already pouring / stacking: one at a time
 
     if Spammed(_source) or not AtStation(_source, uid, "water") then return end
     if not GSC.BarrelCrew.Allow(_source, uid, RIGHT.water) then return end
@@ -396,20 +418,16 @@ AddEventHandler('gsc_kassippu:server:fillStation', function(uid)
         return GSC.Notify.Send(_source, Text().NoBucket, 3000)
     end
 
-    local ms = PourMs()
-    Pouring[_source] = { uid = uid, ends = now + ms }
+    local ms = StartWork(_source, uid, "water")
     TriggerClientEvent('gsc_kassippu:client:stationPour', _source, uid, ms)
 end)
 
 RegisterServerEvent('gsc_kassippu:server:fillStationDone')
 AddEventHandler('gsc_kassippu:server:fillStationDone', function(uid, done)
     local _source = source
-    local pour = Pouring[_source]
-    if not pour or pour.uid ~= uid then return end
-    Pouring[_source] = nil
-
-    if done ~= true then return GSC.Notify.Send(_source, Text().PourCancelled, 3000) end
-    if GetGameTimer() < pour.ends - POUR_SLACK then return end -- "done" before it could be: no water
+    local result = EndWork(_source, uid, "water", done)
+    if result == "cancelled" then return GSC.Notify.Send(_source, Text().PourCancelled, 3000) end
+    if result ~= "ok" then return end
 
     ---o[ Checked again ]o---
     if not Shared.GetChar(_source) or not On() or not AtStation(_source, uid, "water") then return end
@@ -429,35 +447,64 @@ AddEventHandler('gsc_kassippu:server:fillStationDone', function(uid, done)
     GSC.Notify.Send(_source, string.format(Text().Filled, math.floor(w.level), cap), 3000)
 end)
 
+---oo[ Stack Log Rack ]oo---
+
+---o[ The first log he carries, in BurnOrder ]o---
+local function FirstLog(src)
+    for _, kind in ipairs(LogKinds()) do
+        local log = Config.Fuel.Logs[kind]
+        if (exports.vorp_inventory:getItemCount(src, nil, log.item) or 0) > 0 then return kind, log end
+    end
+    return nil, nil
+end
+
 RegisterServerEvent('gsc_kassippu:server:stockStation')
 AddEventHandler('gsc_kassippu:server:stockStation', function(uid)
     local _source = source
     if not Shared.GetChar(_source) or not On() or type(uid) ~= 'string' then return end
+    if IsWorking(_source) then return end -- already pouring / stacking: one at a time
+
     if Spammed(_source) or not AtStation(_source, uid, "rack") then return end
+    if not GSC.BarrelCrew.Allow(_source, uid, RIGHT.rack) then return end
+
+    if RackTotal(Sites[uid].rack) >= Capacity("rack") then return GSC.Notify.Send(_source, Text().RackFull, 3000) end
+    if not FirstLog(_source) then return GSC.Notify.Send(_source, Text().NoLogs, 3000) end
+
+    local ms = StartWork(_source, uid, "rack")
+    TriggerClientEvent('gsc_kassippu:client:stationStack', _source, uid, ms)
+end)
+
+RegisterServerEvent('gsc_kassippu:server:stockStationDone')
+AddEventHandler('gsc_kassippu:server:stockStationDone', function(uid, done)
+    local _source = source
+    local T = Text()
+    local result = EndWork(_source, uid, "rack", done)
+    if result == "cancelled" then
+        return GSC.Notify.Send(_source, T.StackCancelled or "You stopped - the log stayed in your satchel.", 3000)
+    end
+    if result ~= "ok" then return end
+
+    ---o[ Checked again ]o---
+    if not Shared.GetChar(_source) or not On() or not AtStation(_source, uid, "rack") then return end
     if not GSC.BarrelCrew.Allow(_source, uid, RIGHT.rack) then return end
 
     local r = Sites[uid].rack
     local cap = Capacity("rack")
-    local free = cap - RackTotal(r)
-    if free <= 0 then return GSC.Notify.Send(_source, Text().RackFull, 3000) end
+    if RackTotal(r) >= cap then return GSC.Notify.Send(_source, T.RackFull, 3000) end
 
-    local added = 0
-    for _, kind in ipairs(LogKinds()) do
-        if free <= 0 then break end
-        local log = Config.Fuel.Logs[kind]
-        local have = exports.vorp_inventory:getItemCount(_source, nil, log.item) or 0
-        local take = math.min(have, free)
-        if take > 0 and exports.vorp_inventory:subItem(_source, log.item, take) then -- only logs really taken go on the rack
-            r.logs[kind] = (r.logs[kind] or 0) + take
-            free, added = free - take, added + take
-        end
+    local kind, log = FirstLog(_source)
+    if not kind or not exports.vorp_inventory:subItem(_source, log.item, 1) then -- only a log really taken goes on
+        return GSC.Notify.Send(_source, T.NoLogs, 3000)
     end
-    if added == 0 then return GSC.Notify.Send(_source, Text().NoLogs, 3000) end
+    r.logs[kind] = (r.logs[kind] or 0) + 1
 
     GSC.Distillery.Save(uid)
     Broadcast(uid)
-    GSC.Notify.Send(_source, string.format(Text().Stacked, added, RackTotal(r), cap), 4000)
-    TriggerClientEvent('gsc_kassippu:client:barrelAnim', _source, "stack")
+    if T.StackedOne then
+        GSC.Notify.Send(_source, string.format(T.StackedOne, log.label or kind, RackTotal(r), cap), 3000)
+    else
+        GSC.Notify.Send(_source, string.format(T.Stacked, 1, RackTotal(r), cap), 3000)
+    end
 end)
 
 RegisterServerEvent('gsc_kassippu:server:pickupStation')

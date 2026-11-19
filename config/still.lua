@@ -250,7 +250,7 @@ Config.Stations = {
     Enabled        = true,
     MaxDistance    = 6.0, -- metres from the still they may stand
     MinDistance    = 0.8, -- ...and no nearer than this (room for the fire)
-    InteractRadius = 1.5, -- metres: how close for its prompts / its F2 menu wedges
+    InteractRadius = 2.0, -- metres across the ground from its centre: how close for its prompts / its F2 menu wedges
     StreamDistance = 80.0, -- metres: the prop only exists within this
     StillUsesStock = true, -- every log and drop of water the still uses comes off these two, never the satchel
 
