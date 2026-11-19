@@ -690,6 +690,54 @@ Config.Text = {
     TreeAddTooClose   = "There's already a tree %.1fm from here.",           -- distance
     TreeAddDone       = "Tree saved to the database: %s",                    -- tree uid
 
+    ---o[ Settings panel (admin_panel.lua) ]o---
+    AdminPanel = {
+        Title       = "Kasippu Settings",
+        Note        = "Saved to the database and sent to every player at once. Settings marked RESTART are read when the script starts - restart the resource after changing them.",
+        Search      = "Search this file...",
+        Save        = "Save changes",
+        Discard     = "Discard",
+        Close       = "Close",
+        Loading     = "Loading...",
+        Unsaved     = "%d unsaved",                       -- count
+        NoChanges   = "Nothing to save.",
+        Saved       = "Saved %d change(s).",              -- count
+        PartSaved   = "Saved %d of %d - see the server console.", -- saved, tried
+        Invalid     = "Some values are not valid - nothing was saved.",
+        NotReady    = "The settings are still loading - try again in a moment.",
+        Busy        = "Another save is running - try again in a moment.",
+        TooMany     = "Too many changes at once - save in parts.",
+        Restart     = "RESTART",
+        RestartTip  = "Read when the script starts: restart the resource for this to take effect.",
+        Changed     = "Changed in game",
+        FileValue   = "File value: %s",                   -- the config file's value
+        Reset       = "Back to the file value",
+        AddItem     = "Add...",
+        AddEntry    = "+ Add entry",
+        AddEntryTip = "Adds a copy of the last entry - then change it",
+        Duplicate   = "Duplicate",
+        Remove      = "Remove",
+        MoveUp      = "Move up",
+        MoveDown    = "Move down",
+        Entries     = "%d entries",                       -- count
+        NewName     = "new name (letters, numbers, _)",
+        CopyOf      = "copy of",
+        Add         = "Add",
+        InFile      = "In the config file - can't be removed",
+        NameBad     = "Letters, numbers and _ only (32 max), not starting with a number.",
+        NameTaken   = "That name is already used.",
+        RecipeInUse = "%s is brewing in a still right now - remove it later", -- recipe name
+        DiscardAsk  = "Unsaved changes - press Esc again to close without saving.",
+        NoMatch     = "Nothing in this file matches.",
+        LogTitle    = "Settings changed",
+        Files = {
+            main = "Main", items = "Items", controls = "Controls & Menu", animations = "Animations",
+            trees = "Coconut Trees", tree_locations = "Tree Locations", guards = "Guards", recipes = "Recipes",
+            still = "The Still", crew = "Crew & Theft", law = "Law", crates = "Aging Crates",
+            tasting = "Tasting", market = "Market",
+        },
+    },
+
     ---o[ Admin give command (main.lua) ]o---
     GiveUsage       = "Usage: /%s <playerId> <recipe> <grade> [strength] [amount] [fresh|rested|mellow|fine|turned] [tainted]",
     GiveNoAccess    = "You can't use that command.",

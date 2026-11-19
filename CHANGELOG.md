@@ -20,6 +20,51 @@ up to date (green), outdated with the changelog lines from that JSON (red), or a
 ## [Unreleased]
 
 ### Added
+- **Settings panel: change the config files in game (`/kasippuadmin`).** Every config file except `text.lua` and
+  `webhooks.lua`, file by file, with each setting's own comment from the file as its hint. Covers on / off,
+  numbers (control hashes shown as `0x...`), text, `vector2/3/4` and lists of values. Search within a file. Staged
+  changes are saved together with **Save changes**. A setting changed in game shows its file value and a ↺ button
+  to go back to it.
+  - **Who:** only the players in the new server-only `config/admin_panel.lua` (`Config.AdminPanel.SteamIds`: steam
+    hex or steam64, `CharIds`: VORP character ids). No ACE or VORP group opens it, and the panel can't edit that list.
+    `Config.Admin`, `Config.TreeAdmin` and every `Ace` / `Groups` setting are hidden from the panel too.
+  - **Saved** in the new `gsc_kasippu_config` table (created by `database/cv_kasippu_tables.sql`, one row per
+    changed setting) and laid over the config files at every start. The files themselves are never written. Delete a
+    row (or press ↺) to go back to the file's value. `database/config_overrides.json` is a copy the server reads at
+    start, before the DB is up.
+  - **Live:** a save is applied on the server and sent to every player at once (`gsc_kassippu:client:cfgSync`).
+    Players who join later get it from `GlobalState` when the script starts. Config tables are changed in place, so
+    scripts that keep a reference to one see the new value. Settings only read at start (item names, prompt keys, the
+    menu command, tree stream distances, ...) are marked **RESTART** in the panel.
+  - **Checks (server):** every event checks the access list again. A value must have the same kind as the file's
+    value (whole numbers stay whole, text up to 256 characters, lists up to 200 items). Only settings that exist in
+    the file can be changed; nothing can be added or set to nil. All changes are checked before any is saved. Each
+    save goes to the `admin` log / webhook with who changed what.
+  - **Lists of entries** (saloons, traveller camps, law tip-off towns, crate activities / hazards / tiers / climate
+    bands, incidents, notify icons, recipe ingredients / strengths, tree search rewards, tree zones and their
+    reinforce spawns, ...) can have entries **added, copied, moved and removed**, not only edited. A list is saved
+    whole. Every entry is checked against the shape of the file's own entries: the same keys, the same kinds
+    (nested lists and coordinates too), at least 1 and at most 100 entries. A new entry starts as a copy of the
+    last one. `Market.Saloons` and `Market.Traveller.Camps` are marked RESTART (the client keeps its buyer list).
+  - **New recipes from the panel.** `Config.Recipes` and `Config.Market.Base` (the price per recipe) are
+    *named entries*: a new one is added as a copy of an existing one under a new name (letters, numbers, `_`, 32
+    max), then changed. Each is saved whole and checked against the shape of the file's own recipes (ingredients,
+    strengths, rewards, aged items...). Recipes the config file has can be changed but not removed. A recipe a still
+    is brewing right now can't be removed, and neither can a reset that would remove it (new
+    `GSC.Distillery.RecipeInUse`). `recipeItem` is shown again inside a recipe and is marked RESTART (the recipe card
+    is made usable at start). A new recipe's bottle items must already exist in vorp_inventory. Without its own
+    `Market.Base` price, it sells at `Market.DefaultBase`.
+  - **Hidden from the panel by default** (`Config.AdminPanel.Hide` / `HideNamed` in `config/admin_panel.lua`):
+    item names, control keys, command names, dev / log settings, and game names typed as text (models, props, anim
+    dicts, scenarios, bones, sprites, sounds, icons). That's 285 of 1,096 settings; 811 stay. These are not shown,
+    a save that touches one is refused, and a saved DB row for a setting hidden later is ignored (the file's value
+    is used, and the console says how many were skipped). `HideNamed` only hides text settings, so numbers and
+    on / off with those words stay (`CollectAnimSeconds`, `ShowBottleProps`), and it never applies inside a list of
+    entries (a reward or an ingredient needs its item name). Remove a line from `Hide` to bring those settings
+    back. A file with nothing left (items.lua, animations.lua, tree_locations.lua) drops out of the file list.
+  - New: `features/admin_panel/{shared/config_live.lua, server/admin_panel.lua, client/admin_panel.lua}`,
+    `Config.Text.AdminPanel`, and the `#cfg-panel` NUI (`nui/index.html`, `style.css`, `script.js`). The UI guard
+    knows about the panel and closes it on death or lost focus.
 - **Carrying the still, water barrel, log rack and aging crate while placing them.** While a placement ghost is out,
   the player holds a prop in a carry pose (`mech_carry_box` / `idle`, flag 31, so they can still walk and turn): a
   small barrel (`p_barrel010x`) for the still and the water barrel, a small wooden crate (`p_chair_crate02x`) for the

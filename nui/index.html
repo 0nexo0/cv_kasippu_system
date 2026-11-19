@@ -724,6 +724,29 @@
       <div class="pp-ghost" id="pp-ghost"></div>
     </div>
 
+    <!-- Settings panel (GSC.AdminPanel): the config files, changed in game -->
+    <div id="cfg-panel">
+      <header class="cfg-head">
+        <div class="cfg-titles">
+          <div class="cfg-title" id="cfg-title"></div>
+          <div class="cfg-note" id="cfg-note"></div>
+        </div>
+        <input id="cfg-search" class="cfg-input cfg-search" type="text" spellcheck="false" autocomplete="off" />
+        <button id="cfg-close" class="cfg-btn cfg-btn-ghost cfg-btn-x" type="button">&#x2715;</button>
+      </header>
+      <div class="cfg-body">
+        <nav id="cfg-files"></nav>
+        <div id="cfg-main"></div>
+      </div>
+      <footer class="cfg-foot">
+        <span id="cfg-status"></span>
+        <span class="cfg-spacer"></span>
+        <span id="cfg-count"></span>
+        <button id="cfg-discard" class="cfg-btn cfg-btn-ghost" type="button"></button>
+        <button id="cfg-save" class="cfg-btn cfg-btn-main" type="button"></button>
+      </footer>
+    </div>
+
     <div id="notify-stack"></div>
 
     <!-- The Kasippu radial menu (GSC.Radial): what you can do where you stand. UI from ez_radialmenu, GPL-3.0 (vendor/) -->

@@ -91,6 +91,14 @@ local function RecipeOf(uid)
     return Config.Recipes[BarrelLoaded[uid] or ""]
 end
 
+---o[ For the settings panel: a recipe a still is brewing can't be removed ]o---
+function Distillery.RecipeInUse(recipeKey)
+    for _, key in pairs(BarrelLoaded) do
+        if key == recipeKey then return true end
+    end
+    return false
+end
+
 local function IsSecondRun(uid)
     local recipe = RecipeOf(uid)
     return recipe ~= nil and recipe.secondRun == true

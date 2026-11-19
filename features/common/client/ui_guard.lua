@@ -41,6 +41,11 @@ local OWNERS = {
         close = function() GSC.Tasting.Close() end,
     },
     {
+        name = "settings",
+        open = function() return GSC.AdminPanel ~= nil and GSC.AdminPanel.IsOpen ~= nil and GSC.AdminPanel.IsOpen() end,
+        close = function() GSC.AdminPanel.Close() end,
+    },
+    {
         name = "minigame",
         open = function() return GSC.Minigame ~= nil and GSC.Minigame.IsActive() end,
         close = function() GSC.Minigame.Cancel() end,

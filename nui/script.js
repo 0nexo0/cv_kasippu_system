@@ -5304,3 +5304,612 @@ function ppDrawFire(dt, now) {
   pp.smoke = keepSmoke;
   ctx.globalAlpha = 1;
 }
+
+/* ================= Settings panel (GSC.AdminPanel) ================= */
+/* The server builds each file's tree and checks every save; this only edits and sends paths + values. */
+(() => {
+  const panel = document.getElementById("cfg-panel");
+  if (!panel) return;
+  const $ = (id) => document.getElementById(id);
+  const post = (name, body) =>
+    fetch(`https://${GetParentResourceName()}/${name}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json; charset=UTF-8" },
+      body: JSON.stringify(body || {}),
+    }).catch(() => {});
+
+  let T = {};
+  let files = [];
+  let fileKey = null;
+  let fileData = null;
+  let isOpen = false;
+  let saving = false;
+  let escArmed = 0;
+  let statusTimer = null;
+  const staged = new Map();  // path key -> { path, value } | { path, reset: true }
+  const invalid = new Set(); // path keys with text that is not a valid value
+  let errors = new Map();    // path key -> message from the server
+
+  const pkey = (path) => JSON.stringify(path);
+  const fmt = (s, ...a) => { let i = 0; return String(s || "").replace(/%[ds]/g, () => String(a[i++])); };
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined && text !== null) e.textContent = String(text);
+    return e;
+  }
+
+  /* hashes (control keys) read better as 0x... */
+  const isHash = (n) => Number.isInteger(n) && n >= 0x10000000;
+  function showNum(kind, n) {
+    if (typeof n !== "number") return "";
+    return kind === "int" && isHash(n) ? "0x" + n.toString(16).toUpperCase() : String(n);
+  }
+
+  function parseNum(text, kind) {
+    const s = String(text).trim();
+    if (s === "") return null;
+    let n;
+    if (/^-?0x[0-9a-f]+$/i.test(s)) n = s.startsWith("-") ? -parseInt(s.slice(1), 16) : parseInt(s, 16);
+    else if (/^-?(\d+\.?\d*|\.\d+)(e-?\d+)?$/i.test(s)) n = Number(s);
+    else return null;
+    if (!Number.isFinite(n)) return null;
+    if (kind === "int" && !Number.isInteger(n)) return null;
+    return n;
+  }
+
+  function showValue(v, kind, item) {
+    if (v === undefined || v === null) return "";
+    if (kind === "bool") return v ? "true" : "false";
+    if (kind === "int" || kind === "float") return showNum(kind, v);
+    if (kind === "list") return (v || []).map((x) => showValue(x, item)).join(", ") || "(empty)";
+    if (kind === "rows") return fmt(T.Entries || "%d entries", (v || []).length);
+    if (kind === "dict") return Object.keys(v || {}).join(", ");
+    if (kind && kind.startsWith("vec")) return ["x", "y", "z", "w"].filter((k) => v[k] !== undefined).map((k) => v[k]).join(", ");
+    return String(v);
+  }
+
+  /* ---------- status line ---------- */
+  function setStatus(text, kind, ms) {
+    const s = $("cfg-status");
+    s.textContent = text || "";
+    s.className = kind || "";
+    clearTimeout(statusTimer);
+    if (ms) statusTimer = setTimeout(() => { s.textContent = ""; s.className = ""; }, ms);
+  }
+
+  function updateFoot() {
+    const n = staged.size;
+    $("cfg-count").textContent = n ? fmt(T.Unsaved || "%d unsaved", n) : "";
+    $("cfg-save").disabled = saving || n === 0 || invalid.size > 0;
+    $("cfg-discard").disabled = saving || (n === 0 && invalid.size === 0);
+  }
+
+  /* ---------- staging ---------- */
+  function stage(node, path, row, value) {
+    const key = pkey(path);
+    invalid.delete(key);
+    errors.delete(key);
+    if (same(value, node.v)) staged.delete(key);
+    else staged.set(key, { path, value });
+    row.classList.toggle("dirty", staged.has(key));
+    row.classList.remove("invalid");
+    row.querySelector(".cfg-err").textContent = "";
+    updateFoot();
+  }
+
+  function markInvalid(path, row) {
+    const key = pkey(path);
+    invalid.add(key);
+    row.classList.add("invalid");
+    updateFoot();
+  }
+
+  /* what the editor starts with: a staged value, the file value after a staged reset, or the live value */
+  function startValue(node, key) {
+    const s = staged.get(key);
+    if (!s) return node.v;
+    return s.reset ? node.d : s.value;
+  }
+
+  /* ---------- editors ---------- */
+  function numberInput(kind, value, onValue, onBad) {
+    const inp = el("input", "cfg-input");
+    inp.type = "text";
+    inp.spellcheck = false;
+    inp.value = showNum(kind, value);
+    inp.addEventListener("input", () => {
+      const n = parseNum(inp.value, kind);
+      inp.classList.toggle("bad", n === null);
+      if (n === null) onBad(); else onValue(n);
+    });
+    return inp;
+  }
+
+  function makeEditor(node, path, row) {
+    if (node.t === "rows" || node.t === "dict") return rowsUnit(node, path, row);
+    const key = pkey(path);
+    return editor(node.t, node.it, startValue(node, key), (v) => stage(node, path, row, v), () => markInvalid(path, row));
+  }
+
+  /* one value of any kind: set(v) with each valid value, bad() while the text is not one */
+  function editor(kind, it, cur, set, bad) {
+    if (kind === "bool") {
+      const wrap = el("div", "cfg-ctrl-inner");
+      wrap.style.display = "flex"; wrap.style.alignItems = "center"; wrap.style.gap = "10px";
+      const lab = el("label", "cfg-switch");
+      const inp = el("input"); inp.type = "checkbox"; inp.checked = !!cur;
+      const word = el("span", "cfg-bool-word", cur ? "true" : "false");
+      inp.addEventListener("change", () => { word.textContent = inp.checked ? "true" : "false"; set(inp.checked); });
+      lab.append(inp, el("span", "cfg-slider"));
+      wrap.append(lab, word);
+      return wrap;
+    }
+
+    if (kind === "int" || kind === "float") return numberInput(kind, cur, set, bad);
+
+    if (kind === "str") {
+      const inp = el("input", "cfg-input");
+      inp.type = "text"; inp.spellcheck = false; inp.maxLength = 256;
+      inp.value = cur == null ? "" : String(cur);
+      inp.addEventListener("input", () => set(inp.value));
+      return inp;
+    }
+
+    if (kind === "vec2" || kind === "vec3" || kind === "vec4") {
+      const axes = ["x", "y", "z", "w"].slice(0, Number(kind.slice(3)));
+      const value = Object.assign({}, cur);
+      const wrap = el("div", "cfg-vec");
+      const parts = {};
+      for (const a of axes) {
+        const lab = el("label", null, a);
+        const inp = numberInput("float", value[a], () => {}, () => {});
+        parts[a] = inp;
+        inp.addEventListener("input", () => {
+          const out = { __vec: axes.length };
+          for (const b of axes) {
+            const n = parseNum(parts[b].value, "float");
+            if (n === null) return bad();
+            out[b] = n;
+          }
+          set(out);
+        });
+        lab.append(inp);
+        wrap.append(lab);
+      }
+      return wrap;
+    }
+
+    if (kind === "list") {
+      const item = it || "str";
+      let list = Array.isArray(cur) ? cur.slice() : [];
+      const wrap = el("div", "cfg-list");
+      const add = el("input", "cfg-input");
+      add.type = "text"; add.spellcheck = false; add.placeholder = T.AddItem || "Add...";
+      const draw = () => {
+        wrap.textContent = "";
+        list.forEach((v, i) => {
+          const chip = el("span", "cfg-chip", showValue(v, item));
+          const x = el("button", null, "✕");
+          x.type = "button";
+          x.addEventListener("click", () => { list.splice(i, 1); set(list.slice()); draw(); });
+          chip.append(x);
+          wrap.append(chip);
+        });
+        wrap.append(add);
+      };
+      add.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        const text = add.value.trim();
+        if (text === "") return;
+        let v = text;
+        if (item === "int" || item === "float") v = parseNum(text, item);
+        else if (item === "bool") v = text === "true" ? true : text === "false" ? false : null;
+        if (v === null) { add.classList.add("bad"); return; }
+        add.classList.remove("bad");
+        add.value = "";
+        list.push(v);
+        set(list.slice());
+        draw();
+        add.focus();
+      });
+      draw();
+      return wrap;
+    }
+
+    return el("span", "cfg-hint", showValue(cur, kind));
+  }
+
+  /* ---------- lists of entries: saved whole, so entries can be added, copied, moved and removed ---------- */
+  const clone = (v) => JSON.parse(JSON.stringify(v));
+
+  function miniButton(text, title, onClick) {
+    const b = el("button", "cfg-btn cfg-btn-ghost cfg-btn-mini", text);
+    b.type = "button";
+    if (title) b.title = title;
+    b.addEventListener("click", onClick);
+    return b;
+  }
+
+  function entryTitle(entry) {
+    if (!entry || typeof entry !== "object" || entry.__vec) return "";
+    for (const k of ["name", "label", "title", "id", "key", "item"]) if (typeof entry[k] === "string" && entry[k]) return entry[k];
+    return "";
+  }
+
+  /* any value inside an entry */
+  function fieldEditor(schema, value, set, ctx) {
+    if (!schema) return el("span", "cfg-hint", "?");
+    if (schema.t === "rows") return rowsEditor(schema, value, ctx);
+    if (schema.t === "dict") return dictEditor(schema, value, ctx);
+    if (schema.t === "obj") return objEditor(schema, value, ctx);
+    const id = ctx.id();
+    return editor(schema.t, schema.it, value, (v) => { set(v); ctx.ok(id); }, () => ctx.bad(id));
+  }
+
+  function objEditor(schema, value, ctx) {
+    const box = el("div", "cfg-fields");
+    const order = (schema.o || []).filter((k) => value && value[k] !== undefined);
+    for (const k of Object.keys(value || {})) if (!order.includes(k)) order.push(k);
+    for (const k of order) {
+      const sub = (schema.f || {})[k];
+      if (!sub) continue;
+      const wide = sub.t === "obj" || sub.t === "rows" || sub.t === "list" || sub.t === "dict";
+      const line = el("div", "cfg-field" + (wide ? " cfg-field-wide" : ""));
+      const keyEl = el("span", "cfg-field-key", k);
+      if (schema.r && schema.r[k]) {
+        const b = el("span", "cfg-badge cfg-badge-restart", T.Restart || "RESTART");
+        b.title = T.RestartTip || "";
+        keyEl.append(" ", b);
+      }
+      line.append(keyEl);
+      line.append(fieldEditor(sub, value[k], (v) => { value[k] = v; }, ctx));
+      const hint = schema.h && schema.h[k];
+      if (hint) line.append(el("div", "cfg-hint cfg-field-hint", hint));
+      box.append(line);
+    }
+    return box;
+  }
+
+  function rowsEditor(schema, list, ctx) {
+    const box = el("div", "cfg-rows");
+    list.forEach((entry, i) => {
+      const card = el("div", "cfg-entry");
+      const head = el("div", "cfg-entry-head");
+      head.append(el("span", "cfg-entry-num", "#" + (i + 1)));
+      const title = entryTitle(entry);
+      if (title) head.append(el("span", "cfg-entry-title", title));
+      head.append(el("span", "cfg-spacer"));
+
+      const up = miniButton("↑", T.MoveUp || "Move up", () => { [list[i - 1], list[i]] = [list[i], list[i - 1]]; ctx.redraw(); });
+      const down = miniButton("↓", T.MoveDown || "Move down", () => { [list[i + 1], list[i]] = [list[i], list[i + 1]]; ctx.redraw(); });
+      const dup = miniButton(T.Duplicate || "Duplicate", null, () => { list.splice(i + 1, 0, clone(entry)); ctx.redraw(); });
+      const rm = miniButton(T.Remove || "Remove", null, () => { list.splice(i, 1); ctx.redraw(); });
+      up.disabled = i === 0;
+      down.disabled = i === list.length - 1;
+      rm.disabled = list.length <= 1;
+      rm.classList.add("cfg-btn-danger");
+      head.append(up, down, dup, rm);
+
+      card.append(head, fieldEditor(schema.item, entry, (v) => { list[i] = v; }, ctx));
+      box.append(card);
+    });
+    const add = miniButton(T.AddEntry || "+ Add entry", T.AddEntryTip || "Adds a copy of the last entry", () => {
+      list.push(clone(list[list.length - 1]));
+      ctx.redraw();
+    });
+    add.classList.add("cfg-add-entry");
+    add.disabled = list.length >= 100;
+    box.append(add);
+    return box;
+  }
+
+  /* named entries (a recipe, a price): add as a copy under a new name; only names the file lacks can go */
+  const NAME_RE = /^[A-Za-z_][A-Za-z0-9_]{0,31}$/;
+
+  function dictEditor(schema, map, ctx) {
+    const box = el("div", "cfg-rows");
+    const fileKeys = new Set(ctx.fileKeys || []);
+    const keys = Object.keys(map).sort((a, b) => (fileKeys.has(b) - fileKeys.has(a)) || a.localeCompare(b));
+    const leaf = schema.item && schema.item.t !== "obj" && schema.item.t !== "rows" && schema.item.t !== "dict";
+
+    for (const name of keys) {
+      const card = el(leaf ? "div" : "details", "cfg-entry cfg-entry-named");
+      const head = el(leaf ? "div" : "summary", "cfg-entry-head");
+      head.append(el("span", "cfg-entry-num", name));
+      const title = entryTitle(map[name]);
+      if (title && title !== name) head.append(el("span", "cfg-entry-title", title));
+      head.append(el("span", "cfg-spacer"));
+      if (leaf) {
+        const id = ctx.id();
+        head.append(editor(schema.item.t, schema.item.it, map[name], (v) => { map[name] = v; ctx.ok(id); }, () => ctx.bad(id)));
+      }
+      const rm = miniButton(T.Remove || "Remove", fileKeys.has(name) ? (T.InFile || "In the config file - can't be removed") : null, (e) => {
+        e.preventDefault(); e.stopPropagation();
+        delete map[name]; ctx.open.delete(name); ctx.redraw();
+      });
+      rm.disabled = fileKeys.has(name) || keys.length <= 1;
+      rm.classList.add("cfg-btn-danger");
+      head.append(rm);
+      card.append(head);
+
+      if (!leaf) {
+        card.open = ctx.open.has(name);
+        card.addEventListener("toggle", () => { if (card.open) ctx.open.add(name); else ctx.open.delete(name); });
+        card.append(fieldEditor(schema.item, map[name], (v) => { map[name] = v; }, ctx));
+      }
+      box.append(card);
+    }
+
+    /* + a new one: a name, and which one to copy */
+    const addRow = el("div", "cfg-add-named");
+    const nameInp = el("input", "cfg-input");
+    nameInp.type = "text"; nameInp.spellcheck = false; nameInp.maxLength = 32;
+    nameInp.placeholder = T.NewName || "new name (letters, numbers, _)";
+    const from = el("select", "cfg-input cfg-select");
+    for (const name of keys) { const o = el("option", null, (T.CopyOf || "copy of") + " " + name); o.value = name; from.append(o); }
+    const msg = el("span", "cfg-err");
+    const add = miniButton(T.Add || "Add", null, () => {
+      const name = nameInp.value.trim();
+      if (!NAME_RE.test(name)) { msg.textContent = T.NameBad || "Letters, numbers and _ only (32 max), not starting with a number."; return; }
+      if (Object.prototype.hasOwnProperty.call(map, name)) { msg.textContent = T.NameTaken || "That name is already used."; return; }
+      map[name] = clone(map[from.value]);
+      ctx.open.add(name);
+      ctx.redraw();
+    });
+    add.disabled = keys.length >= 50;
+    nameInp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); add.click(); } });
+    addRow.append(nameInp, from, add, msg);
+    box.append(addRow);
+    return box;
+  }
+
+  function rowsUnit(node, path, row) {
+    const key = pkey(path);
+    const work = clone(startValue(node, key) || (node.t === "dict" ? {} : []));
+    const host = el("div", "cfg-unit");
+    const bad = new Set();
+    let seq = 0;
+    const push = () => {
+      if (bad.size) return markInvalid(path, row);
+      stage(node, path, row, clone(work));
+    };
+    const draw = () => {
+      host.textContent = "";
+      seq = 0;
+      host.append(fieldEditor(node.s, work, () => {}, ctx));
+    };
+    const ctx = {
+      fileKeys: node.fk || [],
+      open: new Set(),
+      id: () => ++seq,
+      ok: (id) => { bad.delete(id); push(); },
+      bad: (id) => { bad.add(id); markInvalid(path, row); },
+      redraw: () => { bad.clear(); push(); draw(); },
+    };
+    draw();
+    return host;
+  }
+
+  /* ---------- the tree ---------- */
+  const label = (k) => (typeof k === "number" ? "#" + k : String(k));
+
+  function renderLeaf(node, path) {
+    const key = pkey(path);
+    const row = el("div", "cfg-row" + (node.t === "rows" || node.t === "dict" ? " cfg-row-rows" : ""));
+    row.dataset.search = (path.join(".") + " " + (node.h || "")).toLowerCase();
+
+    const head = el("div", "cfg-label");
+    head.append(el("span", "cfg-key", label(path[path.length - 1])));
+    if (node.r) {
+      const b = el("span", "cfg-badge cfg-badge-restart", T.Restart || "RESTART");
+      b.title = T.RestartTip || "";
+      head.append(b);
+    }
+    if (node.o) head.append(el("span", "cfg-badge cfg-badge-changed", T.Changed || "Changed in game"));
+
+    const ctrl = el("div", "cfg-ctrl");
+    ctrl.append(makeEditor(node, path, row));
+    if (node.o) {
+      const reset = el("button", "cfg-btn cfg-btn-ghost cfg-btn-mini", "↺");
+      reset.type = "button";
+      reset.title = T.Reset || "Back to the file value";
+      reset.addEventListener("click", () => {
+        invalid.delete(key);
+        errors.delete(key);
+        staged.set(key, { path, reset: true });
+        render();
+      });
+      ctrl.append(reset);
+    }
+    row.append(head, ctrl);
+
+    if (node.h) row.append(el("div", "cfg-hint", node.h));
+    if (node.o) row.append(el("div", "cfg-fileval", fmt(T.FileValue || "File value: %s", showValue(node.d, node.t, node.it))));
+    row.append(el("div", "cfg-err", errors.get(key) || ""));
+
+    if (staged.has(key)) row.classList.add("dirty");
+    if (invalid.has(key) || errors.has(key)) row.classList.add("invalid");
+    return row;
+  }
+
+  function renderNode(node, parentPath, depth) {
+    const path = parentPath.concat([node.k]);
+    if (node.t !== "obj") return renderLeaf(node, path);
+
+    const det = el("details", "cfg-group");
+    det.open = depth < 2;
+    det.dataset.search = (String(node.k) + " " + (node.h || "")).toLowerCase();
+    const sum = el("summary", "cfg-group-head");
+    sum.append(el("span", "cfg-key", label(node.k)));
+    if (node.h) sum.append(el("span", "cfg-group-hint", node.h));
+    det.append(sum);
+    for (const c of node.c || []) det.append(renderNode(c, path, depth + 1));
+    return det;
+  }
+
+  function renderSection(sec) {
+    const box = el("section", "cfg-sec");
+    box.dataset.search = (sec.k + " " + (sec.title || "") + " " + (sec.h || "")).toLowerCase();
+    const head = el("div", "cfg-sec-head");
+    head.append(el("span", "cfg-sec-name", sec.title || sec.k), el("span", "cfg-sec-key", "Config." + sec.k));
+    box.append(head);
+    if (sec.t === "obj") {
+      if (sec.h) box.append(el("div", "cfg-hint", sec.h));
+      for (const c of sec.c || []) box.append(renderNode(c, [sec.k], 1));
+    } else {
+      box.append(renderLeaf(sec, [sec.k]));
+    }
+    return box;
+  }
+
+  function render() {
+    const main = $("cfg-main");
+    const scroll = main.scrollTop;
+    main.textContent = "";
+    if (!fileData) {
+      main.append(el("div", "cfg-empty", T.Loading || "Loading..."));
+    } else {
+      for (const sec of fileData.sections || []) main.append(renderSection(sec));
+      main.append(el("div", "cfg-empty cfg-nomatch", T.NoMatch || "Nothing in this file matches."));
+      applySearch();
+      main.scrollTop = scroll;
+    }
+    updateFoot();
+  }
+
+  /* ---------- search (this file) ---------- */
+  function filter(node, q) {
+    if (node.classList.contains("cfg-row")) {
+      const hit = !q || node.dataset.search.includes(q);
+      node.hidden = !hit;
+      return hit;
+    }
+    const selfHit = !!q && (node.dataset.search || "").includes(q);
+    let childHit = false;
+    for (const child of node.children) {
+      if (child.classList.contains("cfg-row") || child.tagName === "DETAILS") {
+        if (filter(child, selfHit ? "" : q)) childHit = true;
+      }
+    }
+    const show = !q || selfHit || childHit;
+    node.hidden = !show;
+    if (q && show && node.tagName === "DETAILS") node.open = true;
+    return show;
+  }
+
+  function applySearch() {
+    const q = $("cfg-search").value.trim().toLowerCase();
+    let any = false;
+    for (const sec of $("cfg-main").querySelectorAll(".cfg-sec")) if (filter(sec, q)) any = true;
+    const none = $("cfg-main").querySelector(".cfg-nomatch");
+    if (none) none.hidden = any || !q;
+  }
+
+  /* ---------- files ---------- */
+  function drawFiles() {
+    const nav = $("cfg-files");
+    nav.textContent = "";
+    for (const f of files) {
+      const b = el("button", "cfg-file" + (f.key === fileKey ? " active" : ""), f.title);
+      b.type = "button";
+      b.append(el("span", "cfg-file-path", f.path));
+      b.addEventListener("click", () => loadFile(f.key));
+      nav.append(b);
+    }
+  }
+
+  function loadFile(key) {
+    if (!key) return;
+    fileKey = key;
+    fileData = null;
+    $("cfg-search").value = "";
+    drawFiles();
+    render();
+    post("cfgLoadFile", { file: key });
+  }
+
+  /* ---------- open / close / save ---------- */
+  function show(d) {
+    T = d.text || {};
+    files = Array.isArray(d.files) ? d.files : [];
+    staged.clear(); invalid.clear(); errors = new Map();
+    saving = false; escArmed = 0;
+    $("cfg-title").textContent = T.Title || "Kasippu Settings";
+    $("cfg-note").textContent = T.Note || "";
+    $("cfg-search").placeholder = T.Search || "Search this file...";
+    $("cfg-save").textContent = T.Save || "Save changes";
+    $("cfg-discard").textContent = T.Discard || "Discard";
+    $("cfg-close").title = T.Close || "Close";
+    setStatus("");
+    isOpen = true;
+    panel.classList.add("show");
+    loadFile(d.file || (files[0] && files[0].key));
+  }
+
+  function hide() {
+    if (!isOpen) return;
+    isOpen = false;
+    panel.classList.remove("show");
+    staged.clear(); invalid.clear(); errors = new Map();
+    fileData = null;
+  }
+
+  function requestClose() {
+    if (staged.size > 0 && Date.now() - escArmed > 3000) {
+      escArmed = Date.now();
+      setStatus(T.DiscardAsk || "Unsaved changes - press Esc again to close without saving.", "bad", 3000);
+      return;
+    }
+    hide();
+    post("cfgClose");
+  }
+
+  function save() {
+    if (saving || staged.size === 0 || invalid.size > 0) return;
+    saving = true;
+    setStatus("...", "");
+    updateFoot();
+    post("cfgSave", { file: fileKey, changes: Array.from(staged.values()) });
+  }
+
+  function onResult(r) {
+    saving = false;
+    r = r || {};
+    if (r.ok) {
+      staged.clear(); invalid.clear(); errors = new Map();
+      setStatus(r.msg, "ok", 5000);
+    } else {
+      errors = new Map();
+      for (const e of r.errors || []) errors.set(pkey(e.path), e.err);
+      setStatus(r.msg, "bad", 8000);
+      render();
+    }
+    updateFoot();
+  }
+
+  $("cfg-save").addEventListener("click", save);
+  $("cfg-discard").addEventListener("click", () => {
+    staged.clear(); invalid.clear(); errors = new Map();
+    setStatus("");
+    render();
+  });
+  $("cfg-close").addEventListener("click", requestClose);
+  $("cfg-search").addEventListener("input", applySearch);
+
+  window.addEventListener("keyup", (e) => {
+    if (isOpen && e.key === "Escape") requestClose();
+  });
+
+  window.addEventListener("message", (event) => {
+    const d = event.data || {};
+    if (d.action === "cfgOpen") show(d);
+    else if (d.action === "cfgFile") {
+      if (isOpen && d.data && d.data.key === fileKey) { fileData = d.data; render(); }
+    } else if (d.action === "cfgResult") { if (isOpen) onResult(d.result); }
+    else if (d.action === "cfgClose" || d.action === "uiReset") hide();
+  });
+})();

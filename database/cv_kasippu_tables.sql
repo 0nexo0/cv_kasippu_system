@@ -92,6 +92,20 @@ CREATE TABLE IF NOT EXISTS `gsc_kassippu_seen` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------------
+-- Settings changed in game with the settings panel (features/admin_panel/server/admin_panel.lua).
+-- Laid over the config files at every start. Delete a row to go back to the file's value.
+--   path  : JSON array of keys, e.g. ["Stations","LogRack","Capacity"]
+--   value : JSON {"v": value}
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `gsc_kasippu_config` (
+  `path`       VARCHAR(255) NOT NULL,
+  `value`      LONGTEXT     NOT NULL,
+  `updated_by` VARCHAR(100) DEFAULT NULL,
+  `updated_at` INT(11)      NOT NULL DEFAULT 0,
+  PRIMARY KEY (`path`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------------
 -- Upgrades from older versions: adds columns an older table may be missing.
 -- Each line does nothing where the column already exists. MariaDB syntax
 -- (MySQL 8 has no ADD COLUMN IF NOT EXISTS - run the needed lines by hand there).

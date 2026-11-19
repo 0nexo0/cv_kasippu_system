@@ -31,6 +31,8 @@ shared_scripts {
     'config/crates.lua',
     'config/tasting.lua',
     'config/market.lua',
+
+    'features/admin_panel/shared/config_live.lua', -- GSC.ConfigLive  panel values laid over the files above (keep last)
 }
 
 ui_page 'nui/index.html'
@@ -66,15 +68,18 @@ client_scripts {
     'features/crates/client/crates.lua',
     'features/market/client/buyers.lua',
     'features/still/client/tasting.lua',
+    'features/admin_panel/client/admin_panel.lua', -- GSC.AdminPanel  the settings panel
     'features/common/client/ui_guard.lua',
 }
 
 server_scripts {
     'config/webhooks.lua', -- server only: holds the webhook URLs
+    'config/admin_panel.lua', -- server only: who may open the settings panel
 
     'features/common/server/admin.lua',
     'features/common/server/notify.lua',
     'features/common/server/logs.lua',
+    'features/admin_panel/server/admin_panel.lua', -- GSC.AdminPanel  settings panel: access, saving, sync
     'cv_core/server/version.lua',
     'features/trees/server/tree_store.lua', -- GSC.TreeStore  trees + bucket economy
     'features/guards/server/alarm.lua',     -- GSC.Alarm      is this trespass real?
